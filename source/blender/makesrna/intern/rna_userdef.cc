@@ -5411,6 +5411,11 @@ static void rna_def_userdef_view(BlenderRNA *brna)
   RNA_def_property_update(prop, 0, "rna_userdef_gizmo_update");
 
   /* menus */
+  prop = RNA_def_property(srna, "search_menu_items", PROP_INT, PROP_NONE);
+  RNA_def_property_range(prop, 10, 30);
+  RNA_def_property_int_default(prop, 10);
+  RNA_def_property_ui_text(prop, "Search menu items", "Number of items to display in search menu");
+
   prop = RNA_def_property(srna, "use_mouse_over_open", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "uiflag", USER_MENUOPENAUTO);
   RNA_def_property_ui_text(
@@ -5483,6 +5488,8 @@ static void rna_def_userdef_view(BlenderRNA *brna)
   RNA_def_property_ui_text(prop,
                            "Confirm Threshold",
                            "Distance threshold after which selection is made (zero to disable)");
+
+  /* search menu */
 
   prop = RNA_def_property(srna, "use_save_prompt", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "uiflag", USER_SAVE_PROMPT);
