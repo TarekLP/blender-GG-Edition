@@ -334,6 +334,11 @@ class PointAttributesImportExportTest(AbstractAlembicTest):
         self.assertEqual(attr.domain, 'POINT')
         return [getattr(item, value_prop) for item in attr.data]
 
+    def test_export_import_int_attribute(self):
+        """Test export and import of an integer point cloud attribute"""
+        values = [3, -7, 42, 0, 2147483647]
+        self.assertEqual(self._export_import_attribute('INT', values), values)
+
 
 class CameraExportImportTest(unittest.TestCase):
     names = [
