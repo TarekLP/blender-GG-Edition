@@ -339,6 +339,11 @@ class PointAttributesImportExportTest(AbstractAlembicTest):
         values = [3, -7, 42, 0, 2147483647]
         self.assertEqual(self._export_import_attribute('INT', values), values)
 
+    def test_export_import_bool_attribute(self):
+        """Test export and import of a boolean point cloud attribute"""
+        values = [True, False, False, True, True]
+        self.assertEqual(self._export_import_attribute('BOOLEAN', values), values)
+
 
 class CameraExportImportTest(unittest.TestCase):
     names = [
