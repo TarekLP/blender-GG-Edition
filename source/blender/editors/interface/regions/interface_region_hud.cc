@@ -174,8 +174,8 @@ static void hud_panel_operator_redo_draw_header(const bContext *C, Panel *panel)
   /* Note to myself: This works but no idea why it fails when expanding panel. I'll figure out
    * alternative later. */
   row.separator_spacer();
-  panel->drawname = nullptr;
   MEM_SAFE_DELETE(panel->drawname);
+  panel->drawname = nullptr;
 
   block_emboss_set(block, EmbossType::None);
 

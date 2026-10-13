@@ -8052,11 +8052,15 @@ static wmOperatorStatus screen_hud_region_translate_modal(bContext *C,
                                                           const wmEvent *event)
 {
   ScrArea *area = CTX_wm_area(C);
+  RedoPanelMoveData *opdata = static_cast<RedoPanelMoveData *>(op->customdata);
+
   switch (event->type) {
     case LEFTMOUSE: {
       if (ELEM(event->val, KM_RELEASE, KM_CLICK)) {
         WM_cursor_modal_restore(CTX_wm_window(C));
         ED_region_tag_redraw(CTX_wm_region(C));
+        MEM_delete(opdata);
+        op->customdata = nullptr;
         return OPERATOR_FINISHED;
       }
       break;
@@ -8064,13 +8068,12 @@ static wmOperatorStatus screen_hud_region_translate_modal(bContext *C,
     case MOUSEMOVE: {
       ARegion *region = CTX_wm_region(C);
       wmWindow *win = CTX_wm_window(C);
-      RedoPanelMoveData *opdata = static_cast<RedoPanelMoveData *>(op->customdata);
       wmEvent *event = win->runtime->eventstate;
       int xy[2] = {event->xy[0] - region->winrct.xmin, event->xy[1] - region->winrct.ymin};
       const int diff[2] = {xy[0] - opdata->init_xy[0], xy[1] - opdata->init_xy[1]};
 
       rcti test_rect = region->winrct;
-      // BLI_rcti_pad(&test_rect, UI_UNIT_X, UI_UNIT_Y);
+      BLI_rcti_pad(&test_rect, 4 * U.pixelsize, 4 * U.pixelsize);
       BLI_rcti_translate(&test_rect, diff[0], diff[1]);
 
       for (ARegion &iter_region : area->regionbase) {
