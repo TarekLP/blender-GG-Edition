@@ -8047,6 +8047,7 @@ static wmOperatorStatus screen_hud_region_translate_modal(bContext *C,
                                                           wmOperator * /*op*/,
                                                           const wmEvent *event)
 {
+  ScrArea *area = CTX_wm_area(C);
   switch (event->type) {
     case LEFTMOUSE: {
       if (ELEM(event->val, KM_RELEASE, KM_CLICK)) {
@@ -8059,9 +8060,22 @@ static wmOperatorStatus screen_hud_region_translate_modal(bContext *C,
     case MOUSEMOVE: {
       ARegion *region = CTX_wm_region(C);
       wmWindow *win = CTX_wm_window(C);
-
       wmEvent *event = win->runtime->eventstate;
       const int diff[2] = {event->xy[0] - event->prev_xy[0], event->xy[1] - event->prev_xy[1]};
+
+      rcti test_rect = region->winrct;
+      // BLI_rcti_pad(&test_rect, UI_UNIT_X, UI_UNIT_Y);
+      BLI_rcti_translate(&test_rect, diff[0], diff[1]);
+
+      for (ARegion &iter_region : area->regionbase) {
+        if (region == &iter_region || BLI_rcti_inside_rcti(&iter_region.winrct, &test_rect)) {
+          continue;
+        }
+        if (BLI_rcti_isect(&test_rect, &iter_region.winrct, nullptr)) {
+          return OPERATOR_RUNNING_MODAL;
+        }
+      }
+
       region->runtime->offset_x += diff[0];
       region->runtime->offset_y += diff[1];
       BLI_rcti_translate(&region->winrct, diff[0], diff[1]);
