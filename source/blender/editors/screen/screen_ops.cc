@@ -8044,8 +8044,8 @@ static void SCREEN_OT_workspace_cycle(wmOperatorType *ot)
 }
 
 static wmOperatorStatus screen_hud_region_translate_modal(bContext *C,
-                                                     wmOperator */*op*/,
-                                                     const wmEvent *event)
+                                                          wmOperator * /*op*/,
+                                                          const wmEvent *event)
 {
   switch (event->type) {
     case LEFTMOUSE: {
@@ -8071,15 +8071,20 @@ static wmOperatorStatus screen_hud_region_translate_modal(bContext *C,
       ED_region_tag_redraw(region);
       break;
     }
-    default: break;
+    default:
+      break;
   }
   return OPERATOR_RUNNING_MODAL;
 }
 
 static wmOperatorStatus screen_hud_region_translate_invoke(bContext *C,
-                                                     wmOperator *op,
-                                                     const wmEvent * /*event*/)
+                                                           wmOperator *op,
+                                                           const wmEvent *event)
 {
+  if ((event->type == LEFTMOUSE) && (event->val == KM_RELEASE)) {
+    /* Grab button clicked too fast, exit operator in that case. */
+    return OPERATOR_CANCELLED;
+  }
   WM_event_add_modal_handler(C, op);
   return OPERATOR_RUNNING_MODAL;
 }

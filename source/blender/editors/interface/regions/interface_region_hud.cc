@@ -181,7 +181,10 @@ static void hud_panel_operator_redo_draw_header(const bContext *C, Panel *panel)
 
   Button *but = uiDefIconBut(
       block, ButtonType::Grip, ICON_GRIP, 0, 0, UI_UNIT_X, UI_UNIT_Y, nullptr, 0.0f, 0.0f, "");
-  button_operator_set(but, WM_operatortype_find("SCREEN_OT_hud_region_translate", false), wm::OpCallContext::InvokeDefault, nullptr);
+  button_operator_set(but,
+                      WM_operatortype_find("SCREEN_OT_hud_region_translate", false),
+                      wm::OpCallContext::InvokeDefault,
+                      nullptr);
 
   block_emboss_set(block, EmbossType::Emboss);
 }
