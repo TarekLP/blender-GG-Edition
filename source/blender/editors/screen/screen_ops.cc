@@ -8043,8 +8043,12 @@ static void SCREEN_OT_workspace_cycle(wmOperatorType *ot)
                "Direction to cycle through");
 }
 
+struct RedoPanelMoveData {
+  int init_xy[2]; /* Region space */
+};
+
 static wmOperatorStatus screen_hud_region_translate_modal(bContext *C,
-                                                          wmOperator * /*op*/,
+                                                          wmOperator *op,
                                                           const wmEvent *event)
 {
   ScrArea *area = CTX_wm_area(C);
@@ -8060,8 +8064,10 @@ static wmOperatorStatus screen_hud_region_translate_modal(bContext *C,
     case MOUSEMOVE: {
       ARegion *region = CTX_wm_region(C);
       wmWindow *win = CTX_wm_window(C);
+      RedoPanelMoveData *opdata = static_cast<RedoPanelMoveData *>(op->customdata);
       wmEvent *event = win->runtime->eventstate;
-      const int diff[2] = {event->xy[0] - event->prev_xy[0], event->xy[1] - event->prev_xy[1]};
+      int xy[2] = {event->xy[0] - region->winrct.xmin, event->xy[1] - region->winrct.ymin};
+      const int diff[2] = {xy[0] - opdata->init_xy[0], xy[1] - opdata->init_xy[1]};
 
       rcti test_rect = region->winrct;
       // BLI_rcti_pad(&test_rect, UI_UNIT_X, UI_UNIT_Y);
@@ -8099,6 +8105,12 @@ static wmOperatorStatus screen_hud_region_translate_invoke(bContext *C,
     /* Grab button clicked too fast, exit operator in that case. */
     return OPERATOR_CANCELLED;
   }
+  ARegion *region = CTX_wm_region(C);
+  RedoPanelMoveData *opdata = MEM_new<RedoPanelMoveData>("");
+  opdata->init_xy[0] = event->xy[0] - region->winrct.xmin;
+  opdata->init_xy[1] = event->xy[1] - region->winrct.ymin;
+
+  op->customdata = opdata;
   WM_event_add_modal_handler(C, op);
   return OPERATOR_RUNNING_MODAL;
 }
