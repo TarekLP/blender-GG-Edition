@@ -8076,20 +8076,32 @@ static wmOperatorStatus screen_hud_region_translate_modal(bContext *C,
       BLI_rcti_pad(&test_rect, 4 * U.pixelsize, 4 * U.pixelsize);
       BLI_rcti_translate(&test_rect, diff[0], diff[1]);
 
+      int snap_value = 20 * U.pixelsize;
+      bool is_snapping = (std::abs(region->runtime->offset_x + diff[0]) < snap_value) &&
+                         (std::abs(region->runtime->offset_y + diff[1]) < snap_value);
+
       for (ARegion &iter_region : area->regionbase) {
         if (region == &iter_region || BLI_rcti_inside_rcti(&iter_region.winrct, &test_rect)) {
           continue;
         }
-        if (BLI_rcti_isect(&test_rect, &iter_region.winrct, nullptr) ||
-            iter_region.regiontype == RGN_TYPE_WINDOW)
-        {
+        if (iter_region.regiontype == RGN_TYPE_WINDOW) {
           return OPERATOR_RUNNING_MODAL;
+        }
+        if (BLI_rcti_isect(&test_rect, &iter_region.winrct, nullptr)) {
+          if ((region->winrct.xmax <= iter_region.winrct.xmin) ||
+              (region->winrct.xmin >= iter_region.winrct.xmax))
+          {
+            diff[0] = 0;
+          }
+          if ((region->winrct.ymax <= iter_region.winrct.ymin) ||
+              (region->winrct.ymin >= iter_region.winrct.ymax))
+          {
+            diff[1] = 0;
+          }
+          break;
         }
       }
 
-      int snap_value = 20 * U.pixelsize;
-      bool is_snapping = (std::abs(region->runtime->offset_x + diff[0]) < snap_value) &&
-                         (std::abs(region->runtime->offset_y + diff[1]) < snap_value);
       if (is_snapping) {
         diff[0] = -region->runtime->offset_x;
         diff[1] = -region->runtime->offset_y;
