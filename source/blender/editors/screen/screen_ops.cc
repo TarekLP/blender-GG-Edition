@@ -8051,8 +8051,8 @@ static wmOperatorStatus screen_hud_region_translate_modal(bContext *C,
                                                           wmOperator *op,
                                                           const wmEvent *event)
 {
-  ScrArea *area = CTX_wm_area(C);
-  RedoPanelMoveData *opdata = static_cast<RedoPanelMoveData *>(op->customdata);
+  const ScrArea *area = CTX_wm_area(C);
+  const RedoPanelMoveData *opdata = static_cast<RedoPanelMoveData *>(op->customdata);
 
   switch (event->type) {
     case LEFTMOUSE: {
@@ -8069,16 +8069,16 @@ static wmOperatorStatus screen_hud_region_translate_modal(bContext *C,
       ARegion *region = CTX_wm_region(C);
       wmWindow *win = CTX_wm_window(C);
       wmEvent *event = win->runtime->eventstate;
-      int xy[2] = {event->xy[0] - region->winrct.xmin, event->xy[1] - region->winrct.ymin};
+      const int xy[2] = {event->xy[0] - region->winrct.xmin, event->xy[1] - region->winrct.ymin};
       int diff[2] = {xy[0] - opdata->init_xy[0], xy[1] - opdata->init_xy[1]};
 
       rcti test_rect = region->winrct;
       BLI_rcti_pad(&test_rect, 4 * U.pixelsize, 4 * U.pixelsize);
       BLI_rcti_translate(&test_rect, diff[0], diff[1]);
 
-      int snap_value = 20 * U.pixelsize;
-      bool is_snapping = (std::abs(region->runtime->offset_x + diff[0]) < snap_value) &&
-                         (std::abs(region->runtime->offset_y + diff[1]) < snap_value);
+      const int snap_value = 20 * U.pixelsize;
+      const bool is_snapping = (std::abs(region->runtime->offset_x + diff[0]) < snap_value) &&
+                               (std::abs(region->runtime->offset_y + diff[1]) < snap_value);
 
       for (ARegion &iter_region : area->regionbase) {
         if (region == &iter_region || BLI_rcti_inside_rcti(&iter_region.winrct, &test_rect)) {
