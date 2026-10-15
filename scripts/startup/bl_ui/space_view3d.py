@@ -1359,12 +1359,12 @@ class VIEW3D_MT_transform(VIEW3D_MT_transform_base, Menu):
         layout.separator()
         if context.mode == 'EDIT_MESH':
             layout.operator("mesh.circularize", text="To Circle")
-            layout.operator("mesh.flatten", text="Flatten")
-            layout.operator("transform.shrink_fatten", text="Shrink/Fatten")
             layout.operator("mesh.space_edge_loops_evenly", text="Space Edge Loops Evenly")
             layout.operator("mesh.relax_edge_loops", text="Relax Edge Loops")
+            layout.operator("mesh.flatten", text="Flatten")
             layout.operator("mesh.curve_edge_loops_between_selected", text="Curve Edge Loops Between Selected")
             layout.operator("mesh.fit_edge_loops_to_annotation", text="Fit Edge Loops To Annotation")
+            layout.operator("transform.shrink_fatten", text="Shrink/Fatten")
             layout.operator("transform.skin_resize")
         elif context.mode in {'EDIT_CURVE', 'EDIT_GREASE_PENCIL', 'EDIT_CURVES', 'EDIT_POINTCLOUD'}:
             layout.operator("transform.transform", text="Radius").mode = 'CURVE_SHRINKFATTEN'
@@ -4764,6 +4764,12 @@ class VIEW3D_MT_edit_mesh_context_menu(Menu):
             col.operator("mesh.vertices_smooth", text="Smooth Vertices").factor = 0.5
             col.operator_context = 'INVOKE_REGION_WIN'
             col.operator("mesh.vertices_smooth_laplacian", text="Smooth Laplacian")
+            col.operator("mesh.circularize", text="To Circle")
+            col.operator("mesh.space_edge_loops_evenly", text="Space Edge Loops Evenly")
+            col.operator("mesh.relax_edge_loops", text="Relax Edge Loops")
+            col.operator("mesh.flatten", text="Flatten")
+            col.operator("mesh.curve_edge_loops_between_selected", text="Curve Edge Loops Between Selected")
+            col.operator("mesh.fit_edge_loops_to_annotation", text="Fit Edge Loops To Annotation")
 
             col.separator()
 
@@ -4820,6 +4826,12 @@ class VIEW3D_MT_edit_mesh_context_menu(Menu):
             col.operator("mesh.edge_rotate", text="Rotate Edge CW").use_ccw = False
             col.operator("transform.edge_slide")
             col.operator("mesh.edge_split")
+            col.operator("mesh.circularize", text="To Circle")
+            col.operator("mesh.space_edge_loops_evenly", text="Space Edge Loops Evenly")
+            col.operator("mesh.relax_edge_loops", text="Relax Edge Loops")
+            col.operator("mesh.flatten", text="Flatten")
+            col.operator("mesh.curve_edge_loops_between_selected", text="Curve Edge Loops Between Selected")
+            col.operator("mesh.fit_edge_loops_to_annotation", text="Fit Edge Loops To Annotation")
 
             col.separator()
 
@@ -4873,6 +4885,12 @@ class VIEW3D_MT_edit_mesh_context_menu(Menu):
 
             if selected_faces_len >= 2:
                 col.operator("mesh.bridge_edge_loops", text="Bridge Faces")
+
+            col.separator()
+
+            # Deform Operators
+            col.operator("mesh.circularize", text="To Circle")
+            col.operator("mesh.flatten", text="Flatten")
 
             col.separator()
 
