@@ -1787,14 +1787,23 @@ static void region_rect_recursive(
     BLI_rcti_resize(&overlap_remainder_margin,
                     max_ii(0, BLI_rcti_size_x(overlap_remainder) - UI_UNIT_X / 2),
                     max_ii(0, BLI_rcti_size_y(overlap_remainder) - UI_UNIT_Y / 2));
-    region->winrct.xmin = overlap_remainder_margin.xmin + region->runtime->offset_x;
-    region->winrct.ymin = overlap_remainder_margin.ymin + region->runtime->offset_y;
-    if (region->runtime->flag & bke::ARegionRuntimeFlag::HUD_PADDING) {
-      region->winrct.ymin += UI_UNIT_Y;
-    }
-    region->winrct.xmax = region->winrct.xmin + prefsizex - 1;
-    region->winrct.ymax = region->winrct.ymin + prefsizey - 1;
 
+    if (region->runtime->offset_y > prefsizey) {
+      region->winrct.xmin = overlap_remainder_margin.xmin + region->runtime->offset_x;
+      region->winrct.ymax = overlap_remainder_margin.ymin + region->runtime->offset_y + HEADERY - 1;
+
+      region->winrct.xmax = region->winrct.xmin + prefsizex - 1;
+      region->winrct.ymin = region->winrct.ymax - prefsizey;
+    } else {
+      region->winrct.xmin = overlap_remainder_margin.xmin + region->runtime->offset_x;
+      region->winrct.ymin = overlap_remainder_margin.ymin + region->runtime->offset_y;
+
+      if (region->runtime->flag & bke::ARegionRuntimeFlag::HUD_PADDING) {
+        region->winrct.ymin += UI_UNIT_Y;
+      }
+      region->winrct.xmax = region->winrct.xmin + prefsizex - 1;
+      region->winrct.ymax = region->winrct.ymin + prefsizey - 1;
+    }
     BLI_rcti_isect(&region->winrct, &overlap_remainder_margin, &region->winrct);
 
     if (BLI_rcti_size_x(&region->winrct) != prefsizex - 1) {

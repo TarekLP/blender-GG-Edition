@@ -36,6 +36,8 @@
 #include "GPU_framebuffer.hh"
 #include "interface_intern.hh"
 
+#include "BLI_math_base_c.hh"
+
 namespace blender::ui {
 
 /* -------------------------------------------------------------------- */
@@ -173,7 +175,7 @@ static void hud_panel_operator_redo_draw_header(const bContext *C, Panel *panel)
   Button *but = uiDefIconBut(block,
                              ButtonType::Grip,
                              ICON_GRIP,
-                             panel->sizex - UI_UNIT_X,
+                             panel->sizex - 1.2 * round_fl_to_int(UI_UNIT_X/block->aspect),
                              UI_UNIT_Y / 2,
                              UI_UNIT_X,
                              UI_UNIT_Y,
