@@ -1790,11 +1790,11 @@ static void region_rect_recursive(
 
     if (region->runtime->offset_y > prefsizey) {
       region->winrct.xmin = overlap_remainder_margin.xmin + region->runtime->offset_x;
-      region->winrct.ymax = overlap_remainder_margin.ymin + region->runtime->offset_y + HEADERY -
-                            1;
+      region->winrct.ymax = overlap_remainder_margin.ymin + region->runtime->offset_y;
 
       region->winrct.xmax = region->winrct.xmin + prefsizex - 1;
-      region->winrct.ymin = region->winrct.ymax - prefsizey;
+      region->winrct.ymin = region->winrct.ymax - prefsizey + 1;
+      BLI_rcti_translate(&region->winrct, 0, 2 * HEADERY - 1);
     }
     else {
       region->winrct.xmin = overlap_remainder_margin.xmin + region->runtime->offset_x;
