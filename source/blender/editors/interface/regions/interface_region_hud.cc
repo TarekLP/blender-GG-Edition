@@ -36,8 +36,6 @@
 #include "GPU_framebuffer.hh"
 #include "interface_intern.hh"
 
-#include "BLI_math_base_c.hh"
-
 namespace blender::ui {
 
 /* -------------------------------------------------------------------- */
@@ -175,7 +173,7 @@ static void hud_panel_operator_redo_draw_header(const bContext *C, Panel *panel)
   Button *but = uiDefIconBut(block,
                              ButtonType::Grip,
                              ICON_GRIP,
-                             panel->sizex - 1.2 * round_fl_to_int(UI_UNIT_X/block->aspect),
+                             panel->sizex - 1.3 * (UI_UNIT_X/block->aspect),
                              UI_UNIT_Y / 2,
                              UI_UNIT_X,
                              UI_UNIT_Y,
@@ -462,8 +460,8 @@ void ED_area_type_hud_ensure(bContext *C, ScrArea *area)
     float x, y;
 
     view2d_scroller_size_get(&region_win->v2d, true, &x, &y);
-    region->runtime->offset_x = x;
-    region->runtime->offset_y = y;
+    region->runtime->offset_x = std::max(int(x), region->runtime->offset_x);
+    region->runtime->offset_y = std::max(int(y), region->runtime->offset_y);
   }
 
   /* Reset zoom level (not well supported). */
