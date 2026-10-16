@@ -173,7 +173,7 @@ static void hud_panel_operator_redo_draw_header(const bContext *C, Panel *panel)
   Button *but = uiDefIconBut(block,
                              ButtonType::Grip,
                              ICON_GRIP,
-                             panel->sizex - 1.3 * (UI_UNIT_X/block->aspect),
+                             panel->sizex - 1.3 * (UI_UNIT_X / block->aspect),
                              UI_UNIT_Y / 2,
                              UI_UNIT_X,
                              UI_UNIT_Y,

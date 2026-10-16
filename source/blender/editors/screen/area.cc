@@ -1790,11 +1790,13 @@ static void region_rect_recursive(
 
     if (region->runtime->offset_y > prefsizey) {
       region->winrct.xmin = overlap_remainder_margin.xmin + region->runtime->offset_x;
-      region->winrct.ymax = overlap_remainder_margin.ymin + region->runtime->offset_y + HEADERY - 1;
+      region->winrct.ymax = overlap_remainder_margin.ymin + region->runtime->offset_y + HEADERY -
+                            1;
 
       region->winrct.xmax = region->winrct.xmin + prefsizex - 1;
       region->winrct.ymin = region->winrct.ymax - prefsizey;
-    } else {
+    }
+    else {
       region->winrct.xmin = overlap_remainder_margin.xmin + region->runtime->offset_x;
       region->winrct.ymin = overlap_remainder_margin.ymin + region->runtime->offset_y;
 
