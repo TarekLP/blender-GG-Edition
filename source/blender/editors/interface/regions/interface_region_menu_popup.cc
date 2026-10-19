@@ -223,7 +223,7 @@ static Block *block_func_POPUP(bContext *C, PopupBlockHandle *handle, void *arg_
   int minwidth = 0;
 
   if (!pup->layout) {
-    popup_menu_create_block(C, pup, pup->title, __func__, wm::OpCallContext::InvokeRegionWin);// caller with WM_OP_INVOKE_REGION_WIN
+    popup_menu_create_block(C, pup, pup->title, __func__, wm::OpCallContext::InvokeRegionWin);
 
     if (pup->menu_func) {
       pup->block->handle = handle;
@@ -475,7 +475,7 @@ PopupMenu *popup_menu_begin_ex(bContext *C, const char *title, const char *block
   /* NOTE: this intentionally differs from the menu & sub-menu default because many operators
    * use popups like this to select one of their options -
    * where having invoke doesn't make sense. */
-  popup_menu_create_block(C, pup, title, block_name, wm::OpCallContext::ExecRegionWin); //caller with WM_OP_EXEC_REGION_WIN
+  popup_menu_create_block(C, pup, title, block_name, wm::OpCallContext::ExecRegionWin);
 
   /* create in advance so we can let buttons point to retval already */
   pup->block->handle = MEM_new<PopupBlockHandle>(__func__);
