@@ -179,7 +179,8 @@ struct PopupMenu {
 static void popup_menu_create_block(bContext *C,
                                     PopupMenu *pup,
                                     const StringRef title,
-                                    const StringRef block_name)
+                                    const StringRef block_name,
+                                    wm::OpCallContext opcontext)
 {
   const uiStyle *style = style_get_dpi();
 
@@ -206,14 +207,6 @@ static void popup_menu_create_block(bContext *C,
                               UI_MENU_PADDING,
                               style);
 
-  /* NOTE: this intentionally differs from the menu & sub-menu default because many operators
-   * use popups like this to select one of their options -
-   * where having invoke doesn't make sense.
-   * When the menu was opened from a button, use invoke still for compatibility. This used to be
-   * the default and changing now could cause issues. */
-  const wm::OpCallContext opcontext = pup->but ? wm::OpCallContext::InvokeRegionWin :
-                                                 wm::OpCallContext::ExecRegionWin;
-
   pup->layout->operator_context_set(opcontext);
 
   if (pup->but) {
@@ -230,7 +223,7 @@ static Block *block_func_POPUP(bContext *C, PopupBlockHandle *handle, void *arg_
   int minwidth = 0;
 
   if (!pup->layout) {
-    popup_menu_create_block(C, pup, pup->title, __func__);
+    popup_menu_create_block(C, pup, pup->title, __func__, wm::OpCallContext::InvokeRegionWin);// caller with WM_OP_INVOKE_REGION_WIN
 
     if (pup->menu_func) {
       pup->block->handle = handle;
@@ -479,7 +472,10 @@ PopupMenu *popup_menu_begin_ex(bContext *C, const char *title, const char *block
 
   pup->title = title;
 
-  popup_menu_create_block(C, pup, title, block_name);
+  /* NOTE: this intentionally differs from the menu & sub-menu default because many operators
+   * use popups like this to select one of their options -
+   * where having invoke doesn't make sense. */
+  popup_menu_create_block(C, pup, title, block_name, wm::OpCallContext::ExecRegionWin); //caller with WM_OP_EXEC_REGION_WIN
 
   /* create in advance so we can let buttons point to retval already */
   pup->block->handle = MEM_new<PopupBlockHandle>(__func__);
