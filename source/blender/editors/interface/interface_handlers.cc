@@ -5128,7 +5128,9 @@ static bool do_but_ANY_drag_toggle(
     bContext *C, Button *but, HandleButtonData *data, const wmEvent *event, int *r_retval)
 {
   if (data->state == BUTTON_STATE_HIGHLIGHT) {
-    if (event->type == LEFTMOUSE && event->val == KM_PRESS && but_is_drag_toggle(but)) {
+    if (event->type == LEFTMOUSE && event->val == KM_PRESS && but_is_drag_toggle(but) &&
+        event->modifier == KM_SHIFT)
+    {
       apply_but(C, but->block, but, data, true);
       button_activate_state(C, but, BUTTON_STATE_WAIT_DRAG);
       data->dragstartx = event->xy[0];
@@ -5326,7 +5328,7 @@ static int do_but_TAB(
       const int event_val = (is_property) ? KM_PRESS : KM_CLICK;
       if (event->val == event_val) {
         button_activate_state(C, but, BUTTON_STATE_EXIT);
-        return WM_UI_HANDLER_BREAK;
+        return WM_UI_HANDLER_CONTINUE;
       }
     }
   }

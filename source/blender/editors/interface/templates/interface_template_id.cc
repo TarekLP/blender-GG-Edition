@@ -1583,6 +1583,22 @@ ID *context_active_but_get_tab_ID(bContext *C)
   return nullptr;
 }
 
+ID *context_mouse_over_but_get_tab_ID(bContext *C, const wmEvent *event, rcti &rect)
+{
+  ARegion *region = CTX_wm_region(C);
+  Button *but = but_find_mouse_over(region, event);
+  if (but && but->type == ButtonType::Tab) {
+    rect.xmin = but->rect.xmin;
+    rect.xmax = but->rect.xmax;
+    rect.ymin = but->rect.ymin;
+    rect.ymax = but->rect.ymax;
+    ui::block_to_window(region, but->block, &rect.xmin, &rect.ymin);
+    ui::block_to_window(region, but->block, &rect.xmax, &rect.ymax);
+    return static_cast<ID *>(but->custom_data);
+  }
+  return nullptr;
+}
+
 static void template_ID_tabs(const bContext *C,
                              Layout &layout,
                              TemplateID &template_id,

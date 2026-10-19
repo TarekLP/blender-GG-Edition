@@ -54,6 +54,9 @@
 
 namespace blender {
 
+namespace ui {
+struct uiToolTipData;
+}
 /* -------------------------------------------------------------------- */
 /** \name Workspace API
  *
@@ -801,6 +804,74 @@ static void WORKSPACE_OT_scene_pin_toggle(wmOperatorType *ot)
   ot->flag = OPTYPE_INTERNAL;
 }
 
+struct DragWorkspaceData {
+  WorkSpace *drag_workspace;
+  WorkSpace *drop_workspace;
+  rcti rect;
+};
+
+static wmOperatorStatus workspace_dragdrop_modal(bContext *C, wmOperator *op, const wmEvent *event)
+{
+  DragWorkspaceData *data = static_cast<DragWorkspaceData *>(op->customdata);
+  Main *bmain = CTX_data_main(C);
+  switch (event->type) {
+    case LEFTMOUSE: {
+      if (ELEM(event->val, KM_RELEASE, KM_CLICK)) {
+        bool after = (event->xy[0] > (data->rect.xmax + data->rect.xmin) * 0.5);
+        BKE_id_reorder(&bmain->workspaces.cast<ID>(),
+                       &data->drag_workspace->id,
+                       &data->drop_workspace->id,
+                       after);
+        op->customdata = nullptr;
+        WM_event_add_notifier(C, NC_WINDOW, nullptr);
+        return OPERATOR_FINISHED;
+      }
+      break;
+    }
+    case MOUSEMOVE: {
+      data->drop_workspace = id_cast<WorkSpace *>(
+          ui::context_mouse_over_but_get_tab_ID(C, event, data->rect));
+      break;
+    }
+    default:
+      break;
+  }
+  return OPERATOR_RUNNING_MODAL;
+}
+
+static wmOperatorStatus workspace_dragdrop_invoke(bContext *C,
+                                                  wmOperator *op,
+                                                  const wmEvent *event)
+{
+  if ((event->type == LEFTMOUSE) && (event->val == KM_RELEASE)) {
+    /* Grab button clicked too fast, exit operator in that case. */
+    return OPERATOR_CANCELLED;
+  }
+
+  DragWorkspaceData *data = MEM_new<DragWorkspaceData>("");
+  WorkSpace *workspace = workspace_context_get(C);
+
+  data->drag_workspace = workspace;
+  op->customdata = data;
+  WM_event_add_modal_handler(C, op);
+  return OPERATOR_RUNNING_MODAL;
+}
+
+static void SCREEN_OT_workspace_dragdrop(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Drag drop Workspace";
+  ot->description = "Move workspaces with dragdrop";
+  ot->idname = "SCREEN_OT_workspace_dragdrop";
+
+  /* API callbacks. */
+  ot->invoke = workspace_dragdrop_invoke;
+  ot->poll = ED_operator_screenactive;
+  ot->modal = workspace_dragdrop_modal;
+
+  ot->flag = 0;
+}
+
 void ED_operatortypes_workspace()
 {
   workspace_add_menu_register();
@@ -814,6 +885,7 @@ void ED_operatortypes_workspace()
   WM_operatortype_append(WORKSPACE_OT_reorder_to_front);
   WM_operatortype_append(WORKSPACE_OT_reorder_to_left_right);
   WM_operatortype_append(WORKSPACE_OT_scene_pin_toggle);
+  WM_operatortype_append(SCREEN_OT_workspace_dragdrop);
 }
 
 /** \} Workspace Operators */

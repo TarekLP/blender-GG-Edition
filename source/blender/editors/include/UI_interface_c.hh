@@ -3052,6 +3052,7 @@ void context_active_but_prop_get_templateID(const bContext *C,
                                             PointerRNA *r_ptr,
                                             PropertyRNA **r_prop);
 ID *context_active_but_get_tab_ID(bContext *C);
+ID *context_mouse_over_but_get_tab_ID(bContext *C, const wmEvent *event, rcti &rect);
 
 Button *region_active_but_get(const ARegion *region);
 Button *region_but_find_rect_over(const ARegion *region, const rcti *rect_px);
