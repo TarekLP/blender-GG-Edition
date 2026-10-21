@@ -8072,35 +8072,25 @@ static wmOperatorStatus screen_hud_region_translate_modal(bContext *C,
       const int xy[2] = {event->xy[0] - region->winrct.xmin, event->xy[1] - region->winrct.ymin};
       int diff[2] = {xy[0] - opdata->init_xy[0], xy[1] - opdata->init_xy[1]};
 
+      rcti bounds;
+      for (ARegion &iter_region : area->regionbase) {
+        if (iter_region.regiontype == RGN_TYPE_WINDOW) {
+          bounds = iter_region.winrct;
+        }
+      }
+
       rcti test_rect = region->winrct;
       BLI_rcti_pad(&test_rect, 4 * U.pixelsize, 4 * U.pixelsize);
       BLI_rcti_translate(&test_rect, diff[0], diff[1]);
 
+      int clamp_ofs[2];
+      BLI_rcti_clamp(&test_rect, &bounds, clamp_ofs);
+      diff[0] += clamp_ofs[0];
+      diff[1] += clamp_ofs[1];
+
       const int snap_value = 20 * U.pixelsize;
       const bool is_snapping = (std::abs(region->runtime->offset_x + diff[0]) < snap_value) &&
                                (std::abs(region->runtime->offset_y + diff[1]) < snap_value);
-
-      for (ARegion &iter_region : area->regionbase) {
-        if (region == &iter_region || BLI_rcti_inside_rcti(&iter_region.winrct, &test_rect)) {
-          continue;
-        }
-        if (iter_region.regiontype == RGN_TYPE_WINDOW) {
-          return OPERATOR_RUNNING_MODAL;
-        }
-        if (BLI_rcti_isect(&test_rect, &iter_region.winrct, nullptr)) {
-          if ((region->winrct.xmax <= iter_region.winrct.xmin) ||
-              (region->winrct.xmin >= iter_region.winrct.xmax))
-          {
-            diff[0] = 0;
-          }
-          if ((region->winrct.ymax <= iter_region.winrct.ymin) ||
-              (region->winrct.ymin >= iter_region.winrct.ymax))
-          {
-            diff[1] = 0;
-          }
-          break;
-        }
-      }
 
       if (is_snapping) {
         diff[0] = -region->runtime->offset_x;
