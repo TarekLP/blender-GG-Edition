@@ -143,6 +143,9 @@ static void rna_Area_type_set(PointerRNA *ptr, int value)
   }
 
   ScrArea *area = static_cast<ScrArea *>(ptr->data);
+  if (area->type->may_change && !area->type->may_change(area)) {
+    return;
+  }
   /* Empty areas are locked. */
   if ((value == SPACE_EMPTY) || (area->spacetype == SPACE_EMPTY)) {
     return;
@@ -153,8 +156,11 @@ static void rna_Area_type_set(PointerRNA *ptr, int value)
 
 static void rna_Area_type_update(bContext *C, PointerRNA *ptr)
 {
-  bScreen *screen = id_cast<bScreen *>(ptr->owner_id);
   ScrArea *area = static_cast<ScrArea *>(ptr->data);
+  if (area->type->may_change && !area->type->may_change(area)) {
+    return;
+  }
+  bScreen *screen = id_cast<bScreen *>(ptr->owner_id);
 
   /* Running update without having called 'set', see: #64049 */
   if (area->butspacetype == SPACE_EMPTY) {
@@ -275,6 +281,9 @@ static void rna_Area_ui_type_set(PointerRNA *ptr, int value)
   const int space_type = value >> 16;
   /* Empty areas are locked. */
   if ((space_type == SPACE_EMPTY) || (area->spacetype == SPACE_EMPTY)) {
+    return;
+  }
+  if (area->type->may_change && !area->type->may_change(area)) {
     return;
   }
   SpaceType *st = BKE_spacetype_from_id(space_type);

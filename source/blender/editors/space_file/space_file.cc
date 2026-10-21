@@ -908,6 +908,7 @@ static int file_space_subtype_get(ScrArea *area)
 
 static void file_space_subtype_set(ScrArea *area, int value)
 {
+  BLI_assert(area->type->may_change(area));
   SpaceFile *sfile = area->spacedata.first_as<SpaceFile>();
   /* Force re-init. */
   for (ARegion &region : area->regionbase) {
@@ -1031,6 +1032,13 @@ static void file_space_blend_write(BlendWriter *writer, SpaceLink *sl)
   }
 }
 
+static bool file_may_change(const ScrArea *area)
+{
+  const SpaceFile *sfile = area->spacedata.first_as<SpaceFile>();
+  /* Don't allow changing editor type for the File Selector window. */
+  return sfile->op == nullptr;
+}
+
 void ED_spacetype_file()
 {
   std::unique_ptr<SpaceType> st = std::make_unique<SpaceType>();
@@ -1047,6 +1055,7 @@ void ED_spacetype_file()
   st->duplicate = file_duplicate;
   st->refresh = file_refresh;
   st->listener = file_listener;
+  st->may_change = file_may_change;
   st->operatortypes = file_operatortypes;
   st->keymap = file_keymap;
   st->dropboxes = file_dropboxes;
