@@ -54,9 +54,6 @@
 
 namespace blender {
 
-namespace ui {
-struct uiToolTipData;
-}
 /* -------------------------------------------------------------------- */
 /** \name Workspace API
  *
