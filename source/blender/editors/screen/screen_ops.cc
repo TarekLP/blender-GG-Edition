@@ -7831,7 +7831,8 @@ static void SCREEN_OT_region_blend(wmOperatorType *ot)
 static bool space_type_set_or_cycle_poll(bContext *C)
 {
   ScrArea *area = CTX_wm_area(C);
-  return area && ((area->type->may_change == nullptr) || area->type->may_change(area));
+  return area && area->type &&
+         ((area->type->may_change == nullptr) || area->type->may_change(area));
 }
 
 static wmOperatorStatus space_type_set_or_cycle_exec(bContext *C, wmOperator *op)
