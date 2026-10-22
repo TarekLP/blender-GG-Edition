@@ -356,6 +356,11 @@ class PointAttributesImportExportTest(AbstractAlembicTest):
         result = self._export_import_attribute('FLOAT_COLOR', values, value_prop="color")
         self.assertEqual([tuple(value) for value in result], values)
 
+    def test_export_import_int8_attribute(self):
+        """Test export and import of an 8-bit integer point cloud attribute"""
+        values = [3, -7, 42, -128, 127]
+        self.assertEqual(self._export_import_attribute('INT8', values), values)
+
 
 class CameraExportImportTest(unittest.TestCase):
     names = [

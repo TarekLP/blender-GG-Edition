@@ -241,6 +241,10 @@ static void read_point_arb_geom_params(const IPointsSchema &schema,
       read_typed_property_sample<IInt32ArrayProperty, int>(
           prop, selector, name, attribute_accessor);
     }
+    else if (data_type == DataType(kInt8POD, 1)) {
+      read_typed_property_sample<ICharArrayProperty, int8_t>(
+          prop, selector, name, attribute_accessor);
+    }
     else if (data_type == DataType(kBooleanPOD, 1)) {
       read_typed_property_sample<IBoolArrayProperty, bool>(
           prop, selector, name, attribute_accessor);
