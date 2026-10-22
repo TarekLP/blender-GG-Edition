@@ -20,6 +20,7 @@
 #include "BKE_pointcloud.hh"
 
 #include "BLI_color_types.hh"
+#include "BLI_math_quaternion_types.hh"
 
 #include "IO_validate.hh"
 
@@ -166,6 +167,13 @@ template<> int2 convert_abc_value(const V2i &in)
   return int2(in.x, in.y);
 }
 
+template<> math::Quaternion convert_abc_value(const Quatf &in)
+{
+  float3 imaginary;
+  copy_zup_from_yup(imaginary, in.v.getValue());
+  return math::Quaternion(in.r, imaginary);
+}
+
 template<> bool convert_abc_value(const Alembic::Util::bool_t &in)
 {
   return in.asBool();
@@ -236,6 +244,10 @@ static void read_point_arb_geom_params(const IPointsSchema &schema,
     else if (data_type == DataType(kFloat32POD, 4)) {
       if (interpretation == C4fTPTraits::interpretation()) {
         read_typed_property_sample<IC4fArrayProperty, ColorGeometry4f>(
+            prop, selector, name, attribute_accessor);
+      }
+      else if (interpretation == QuatfTPTraits::interpretation()) {
+        read_typed_property_sample<IQuatfArrayProperty, math::Quaternion>(
             prop, selector, name, attribute_accessor);
       }
     }

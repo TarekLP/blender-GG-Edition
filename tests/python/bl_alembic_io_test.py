@@ -373,6 +373,18 @@ class PointAttributesImportExportTest(AbstractAlembicTest):
         result = self._export_import_attribute('INT32_2D', values)
         self.assertEqual([tuple(value) for value in result], values)
 
+    def test_export_import_quaternion_attribute(self):
+        """Test export and import of a quaternion point cloud attribute"""
+        values = [
+            (1.0, 0.0, 0.0, 0.0),
+            (0.5, 0.5, 0.5, 0.5),
+            (0.0, 1.0, 0.0, 0.0),
+            (0.0, 0.0, 1.0, 0.0),
+            (0.0, 0.0, 0.0, 1.0),
+        ]
+        result = self._export_import_attribute('QUATERNION', values)
+        self.assertEqual([tuple(value) for value in result], values)
+
 
 class CameraExportImportTest(unittest.TestCase):
     names = [
