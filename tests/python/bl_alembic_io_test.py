@@ -301,6 +301,40 @@ class VertexColourImportExportTest(AbstractAlembicTest):
         self.assertEqual(mesh.color_attributes.default_color_name, 'Default_001')
 
 
+class PointAttributesImportExportTest(AbstractAlembicTest):
+    def setUp(self):
+        super().setUp()
+        self._tempdir = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tempdir.cleanup)
+        self.tempdir = pathlib.Path(self._tempdir.name)
+
+    def _export_import_attribute(self, data_type, values, value_prop="value"):
+        """Export a point cloud with a single point attribute, import it back and return its values"""
+
+        name = "attr"
+        abc_path = str(self.tempdir / "point-{:s}-attribute.abc".format(data_type.lower()))
+
+        # Export
+        pointcloud = bpy.data.pointclouds.new("points")
+        pointcloud.resize(len(values))
+        attr = pointcloud.attributes.new(name, data_type, 'POINT')
+        for item, value in zip(attr.data, values):
+            setattr(item, value_prop, value)
+        ob = bpy.data.objects.new("points", pointcloud)
+        bpy.context.scene.collection.objects.link(ob)
+        self.assertIn('FINISHED', bpy.ops.wm.alembic_export(filepath=abc_path, start=1, end=1))
+
+        # Import back
+        bpy.ops.wm.open_mainfile(filepath=str(args.testdir / "empty.blend"))
+        res = bpy.ops.wm.alembic_import(filepath=abc_path, as_background_job=False)
+        self.assertEqual({'FINISHED'}, res)
+
+        attr = bpy.context.active_object.data.attributes[name]
+        self.assertEqual(attr.data_type, data_type)
+        self.assertEqual(attr.domain, 'POINT')
+        return [getattr(item, value_prop) for item in attr.data]
+
+
 class CameraExportImportTest(unittest.TestCase):
     names = [
         'CAM_Unit_Transform',
