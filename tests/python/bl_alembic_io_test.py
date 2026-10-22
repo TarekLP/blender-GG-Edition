@@ -404,6 +404,11 @@ class PointAttributesImportExportTest(AbstractAlembicTest):
                 for actual_value, expected_value in zip(actual_row, expected_row):
                     self.assertAlmostEqual(actual_value, expected_value, places=5)
 
+    def test_export_import_string_attribute(self):
+        """Test export and import of a string point cloud attribute"""
+        values = [b"alpha", b"", b"with space", b"Gr\xc3\xbc\xc3\x9fe", b"x" * 100]
+        self.assertEqual(self._export_import_attribute('STRING', values), values)
+
 
 class CameraExportImportTest(unittest.TestCase):
     names = [

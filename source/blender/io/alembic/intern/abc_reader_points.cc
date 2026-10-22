@@ -10,6 +10,7 @@
 #include "abc_axis_conversion.h"
 #include "abc_util.h"
 
+#include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
 #include "DNA_pointcloud_types.h"
 
@@ -183,6 +184,15 @@ template<> float4x4 convert_abc_value(const M44d &in)
   return out;
 }
 
+template<> MStringProperty convert_abc_value(const std::string &in)
+{
+  MStringProperty out{};
+  const size_t len = std::min(in.size(), sizeof(out.s));
+  memcpy(out.s, in.data(), len);
+  out.s_len = char(len);
+  return out;
+}
+
 template<> bool convert_abc_value(const Alembic::Util::bool_t &in)
 {
   return in.asBool();
@@ -290,6 +300,10 @@ static void read_point_arb_geom_params(const IPointsSchema &schema,
     }
     else if (data_type == DataType(kBooleanPOD, 1)) {
       read_typed_property_sample<IBoolArrayProperty, bool>(
+          prop, selector, name, attribute_accessor);
+    }
+    else if (data_type == DataType(kStringPOD, 1)) {
+      read_typed_property_sample<IStringArrayProperty, MStringProperty>(
           prop, selector, name, attribute_accessor);
     }
   }
