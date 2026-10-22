@@ -908,8 +908,6 @@ static int file_space_subtype_get(ScrArea *area)
 
 static void file_space_subtype_set(ScrArea *area, int value)
 {
-  BLI_assert(((area->type == nullptr) || (area->type->may_change == nullptr) ||
-              area->type->may_change(area)));
   SpaceFile *sfile = area->spacedata.first_as<SpaceFile>();
   /* Force re-init. */
   for (ARegion &region : area->regionbase) {
