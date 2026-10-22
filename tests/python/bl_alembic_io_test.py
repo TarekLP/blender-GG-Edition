@@ -367,6 +367,12 @@ class PointAttributesImportExportTest(AbstractAlembicTest):
         result = self._export_import_attribute('INT16_2D', values)
         self.assertEqual([tuple(value) for value in result], values)
 
+    def test_export_import_int2_attribute(self):
+        """Test export and import of a 2D integer point cloud attribute"""
+        values = [(3, -7), (42, 0), (-2147483648, 2147483647), (1, 2), (-5, 9)]
+        result = self._export_import_attribute('INT32_2D', values)
+        self.assertEqual([tuple(value) for value in result], values)
+
 
 class CameraExportImportTest(unittest.TestCase):
     names = [
