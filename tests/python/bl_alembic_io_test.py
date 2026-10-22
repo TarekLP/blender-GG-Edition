@@ -385,6 +385,25 @@ class PointAttributesImportExportTest(AbstractAlembicTest):
         result = self._export_import_attribute('QUATERNION', values)
         self.assertEqual([tuple(value) for value in result], values)
 
+    def test_export_import_float4x4_attribute(self):
+        """Test export and import of a 4x4 matrix point cloud attribute"""
+
+        from mathutils import Euler, Matrix, Vector
+
+        values = [
+            Matrix.Identity(4),
+            Matrix.Translation((1.0, 2.0, 3.0)),
+            Matrix.Rotation(math.radians(30.0), 4, 'X'),
+            Matrix.LocRotScale((-4.0, 0.5, 2.0), Euler((0.1, 0.2, 0.3)), (1.0, 2.0, 3.0)),
+            Matrix.LocRotScale((0.0, -1.0, 7.0), Euler((-0.5, 1.0, 0.25)), Vector((0.5, 0.5, 4.0))),
+        ]
+        result = self._export_import_attribute('FLOAT4X4', values)
+        self.assertEqual(len(result), len(values))
+        for actual, expected in zip(result, values):
+            for actual_row, expected_row in zip(actual, expected):
+                for actual_value, expected_value in zip(actual_row, expected_row):
+                    self.assertAlmostEqual(actual_value, expected_value, places=5)
+
 
 class CameraExportImportTest(unittest.TestCase):
     names = [
