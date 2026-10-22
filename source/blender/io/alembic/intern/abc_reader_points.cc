@@ -156,6 +156,11 @@ template<> float2 convert_abc_value(const V2f &in)
   return in.getValue();
 }
 
+template<> short2 convert_abc_value(const V2s &in)
+{
+  return short2(in.x, in.y);
+}
+
 template<> bool convert_abc_value(const Alembic::Util::bool_t &in)
 {
   return in.asBool();
@@ -243,6 +248,10 @@ static void read_point_arb_geom_params(const IPointsSchema &schema,
     }
     else if (data_type == DataType(kInt8POD, 1)) {
       read_typed_property_sample<ICharArrayProperty, int8_t>(
+          prop, selector, name, attribute_accessor);
+    }
+    else if (data_type == DataType(kInt16POD, 2)) {
+      read_typed_property_sample<IV2sArrayProperty, short2>(
           prop, selector, name, attribute_accessor);
     }
     else if (data_type == DataType(kBooleanPOD, 1)) {
