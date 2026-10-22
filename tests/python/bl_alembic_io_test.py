@@ -344,6 +344,18 @@ class PointAttributesImportExportTest(AbstractAlembicTest):
         values = [True, False, False, True, True]
         self.assertEqual(self._export_import_attribute('BOOLEAN', values), values)
 
+    def test_export_import_float_color_attribute(self):
+        """Test export and import of a float color point cloud attribute"""
+        values = [
+            (1.0, 0.0, 0.0, 1.0),
+            (0.0, 0.5, 0.0, 0.25),
+            (0.0, 0.0, 2.0, 0.5),
+            (0.125, 0.25, 0.375, 0.0),
+            (1.0, 1.0, 1.0, 0.75),
+        ]
+        result = self._export_import_attribute('FLOAT_COLOR', values, value_prop="color")
+        self.assertEqual([tuple(value) for value in result], values)
+
 
 class CameraExportImportTest(unittest.TestCase):
     names = [

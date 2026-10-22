@@ -146,6 +146,11 @@ template<> ColorGeometry4f convert_abc_value(const C3f &in)
   return ColorGeometry4f(in[0], in[1], in[2], 1.0f);
 }
 
+template<> ColorGeometry4f convert_abc_value(const C4f &in)
+{
+  return ColorGeometry4f(in.r, in.g, in.b, in.a);
+}
+
 template<> float2 convert_abc_value(const V2f &in)
 {
   return in.getValue();
@@ -215,6 +220,12 @@ static void read_point_arb_geom_params(const IPointsSchema &schema,
       }
       else {
         read_typed_property_sample<IV3fArrayProperty, float3>(
+            prop, selector, name, attribute_accessor);
+      }
+    }
+    else if (data_type == DataType(kFloat32POD, 4)) {
+      if (interpretation == C4fTPTraits::interpretation()) {
+        read_typed_property_sample<IC4fArrayProperty, ColorGeometry4f>(
             prop, selector, name, attribute_accessor);
       }
     }
