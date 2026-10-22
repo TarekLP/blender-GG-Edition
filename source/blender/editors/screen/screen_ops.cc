@@ -8072,10 +8072,19 @@ static wmOperatorStatus screen_hud_region_translate_modal(bContext *C,
       const int xy[2] = {event->xy[0] - region->winrct.xmin, event->xy[1] - region->winrct.ymin};
       int diff[2] = {xy[0] - opdata->init_xy[0], xy[1] - opdata->init_xy[1]};
 
-      rcti bounds;
+      rcti bounds = area->totrct;
       for (ARegion &iter_region : area->regionbase) {
-        if (iter_region.regiontype == RGN_TYPE_WINDOW) {
-          bounds = iter_region.winrct;
+        if (iter_region.alignment == RGN_ALIGN_LEFT) {
+          bounds.xmin = std::max(bounds.xmin, iter_region.winrct.xmax);
+        }
+        if (iter_region.alignment == RGN_ALIGN_RIGHT) {
+          bounds.xmax = std::min(bounds.xmax, iter_region.winrct.xmin);
+        }
+        if (iter_region.alignment == RGN_ALIGN_TOP) {
+          bounds.ymax = std::min(bounds.ymax, iter_region.winrct.ymin);
+        }
+        if (iter_region.alignment == RGN_ALIGN_BOTTOM) {
+          bounds.ymin = std::max(bounds.ymin, iter_region.winrct.ymax);
         }
       }
 
