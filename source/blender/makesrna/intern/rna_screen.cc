@@ -157,7 +157,7 @@ static void rna_Area_type_set(PointerRNA *ptr, int value)
 static void rna_Area_type_update(bContext *C, PointerRNA *ptr)
 {
   ScrArea *area = static_cast<ScrArea *>(ptr->data);
-  if (area->type&&area->type->may_change && !area->type->may_change(area)) {
+  if (area->type && area->type->may_change && !area->type->may_change(area)) {
     return;
   }
   bScreen *screen = id_cast<bScreen *>(ptr->owner_id);
