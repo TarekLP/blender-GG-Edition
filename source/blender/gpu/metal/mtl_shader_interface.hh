@@ -84,8 +84,6 @@ class MTLShaderInterface : public ShaderInterface {
   /* Bit mask of bound top-level acceleration structure slots. */
   uint32_t enabled_accel_mask_ = 0;
 
-  shader::BuiltinBits shader_builtins_ = shader::BuiltinBits::NONE;
-
   /* Used for texture atomic workaround. */
   int image_names_offsets_[MTL_MAX_IMAGE_SLOTS];
   int sampler_names_offsets_[MTL_MAX_SAMPLER_SLOTS];
@@ -124,11 +122,6 @@ class MTLShaderInterface : public ShaderInterface {
   bool use_texture_atomic() const
   {
     return bool(shader_builtins_ & shader::BuiltinBits::TEXTURE_ATOMIC);
-  }
-
-  bool is_point_shader() const
-  {
-    return (shader_builtins_ & shader::BuiltinBits::POINT_SIZE) == shader::BuiltinBits::POINT_SIZE;
   }
 
   /* Name buffer fetching. */

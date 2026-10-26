@@ -5,6 +5,7 @@
 # blender -b --factory-startup --python tests/python/bl_pyapi_gpu.py
 
 import unittest
+import warnings
 
 import gpu
 
@@ -153,6 +154,82 @@ class TestGpuStorageBuf(unittest.TestCase):
             item = struct.unpack_from(item_fmt, result, i * 32)
             self.assertEqual(item[:4], (x * 2.0, y * 2.0, z * 2.0, w * 2.0))
             self.assertEqual(item[4], weight + 1.0)
+
+
+class TestGpuPointSize(unittest.TestCase):
+    """Point batches need a shader that writes `gl_PointSize` on Vulkan and Metal."""
+
+    def setUp(self):
+        gpu.init()
+        self.texture = gpu.types.GPUTexture(size=(8, 8), format='RGBA8')
+        self.framebuffer = gpu.types.GPUFrameBuffer(color_slots=[self.texture])
+
+    @staticmethod
+    def _make_point_batch():
+        fmt = gpu.types.GPUVertFormat()
+        fmt.attr_add(id="pos", comp_type='F32', len=3, fetch_mode='FLOAT')
+        vbo = gpu.types.GPUVertBuf(len=1, format=fmt)
+        vbo.attr_fill("pos", [(0.0, 0.0, 0.0)])
+        return gpu.types.GPUBatch(type='POINTS', buf=vbo)
+
+    @staticmethod
+    def _make_point_shader(write_point_size):
+        info = gpu.types.GPUShaderCreateInfo()
+        point_size = "gl_PointSize = 1.0;" if write_point_size else ""
+        info.vertex_source(f"void main() {{ gl_Position = vec4(0.0, 0.0, 0.0, 1.0); {point_size} }}")
+        info.fragment_source("void main() { fragColor = vec4(1.0, 0.0, 0.0, 1.0); }")
+        info.fragment_out(0, 'VEC4', 'fragColor')
+        return gpu.shader.create_from_info(info)
+
+    def _draw_point(self, shader):
+        """Draw a single point in the framebuffer.
+
+        Returns the warnings raised by the draw call, and the number of pixels covered by the
+        point. The latter is 0 when the draw call is skipped.
+        """
+        batch = self._make_point_batch()
+        self.texture.clear(format='FLOAT', value=(0.0, 0.0, 0.0, 1.0))
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            with self.framebuffer.bind():
+                gpu.state.viewport_set(0, 0, 8, 8)
+                batch.draw(shader)
+                pixels = self.framebuffer.read_color(0, 0, 8, 8, 4, 0, 'FLOAT').to_list()
+            gpu.shader.unbind()
+        return caught, len([pixel for row in pixels for pixel in row if pixel[0] > 0.5])
+
+    @staticmethod
+    def _point_size_warnings(warnings_caught):
+        return [
+            warning for warning in warnings_caught
+            if issubclass(warning.category, UserWarning)
+            and "gl_PointSize" in str(warning.message)
+        ]
+
+    def test_shader_writes_point_size(self):
+        """A shader that writes `gl_PointSize` is supported by every backend."""
+        warnings_caught, drawn_pixels = self._draw_point(self._make_point_shader(True))
+        self.assertEqual(warnings_caught, [])
+        self.assertGreater(drawn_pixels, 0)
+
+    def test_shader_without_point_size(self):
+        """The shader is reported on every backend, but only Vulkan and Metal skip the draw."""
+        warnings_caught, drawn_pixels = self._draw_point(self._make_point_shader(False))
+        self.assertEqual(len(self._point_size_warnings(warnings_caught)), 1)
+        if gpu.platform.backend_type_get() in {"VULKAN", "METAL"}:
+            # The draw call is skipped.
+            self.assertEqual(drawn_pixels, 0)
+        else:
+            # OpenGL has a global point size, so the draw is still performed.
+            self.assertGreater(drawn_pixels, 0)
+
+    def test_deprecated_point_builtin(self):
+        """Drawing points with a regular builtin still works on OpenGL."""
+        warnings_caught, drawn_pixels = self._draw_point(gpu.shader.from_builtin('FLAT_COLOR'))
+        self.assertTrue(any(issubclass(w.category, DeprecationWarning) for w in warnings_caught))
+        self.assertEqual(len(self._point_size_warnings(warnings_caught)), 1)
+        if gpu.platform.backend_type_get() in {"VULKAN", "METAL"}:
+            self.assertEqual(drawn_pixels, 0)
 
 
 if __name__ == "__main__":

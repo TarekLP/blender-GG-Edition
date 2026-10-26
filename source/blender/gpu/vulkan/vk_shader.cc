@@ -1442,7 +1442,7 @@ VkPipeline VKShader::ensure_and_get_graphics_pipeline(
 
   BLI_assert(!is_compute_shader_);
   BLI_assert_msg(
-      primitive != GPU_PRIM_POINTS || interface_get().is_point_shader(),
+      primitive != GPU_PRIM_POINTS || interface_get().writes_point_size(),
       "GPU_PRIM_POINTS is used with a shader that doesn't set point size before "
       "drawing fragments. Calling code should be adapted to use a shader that sets the "
       "gl_PointSize before entering the fragment stage. For example `GPU_SHADER_3D_POINT_*`.");

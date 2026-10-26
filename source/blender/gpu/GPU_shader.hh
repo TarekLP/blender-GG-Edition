@@ -175,6 +175,14 @@ gpu::Shader *GPU_shader_get_bound();
 
 const char *GPU_shader_get_name(gpu::Shader *shader);
 
+/**
+ * Return true if the shader writes `gl_PointSize`.
+ *
+ * This is the same check for every backend. OpenGL can still draw points without it because it
+ * has a global point size, while Vulkan and Metal require the vertex stage to write it.
+ */
+bool GPU_shader_is_point_shader(const gpu::Shader *shader);
+
 /** \} */
 
 /* -------------------------------------------------------------------- */

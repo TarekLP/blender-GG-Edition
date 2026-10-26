@@ -391,6 +391,8 @@ GLShaderInterface::GLShaderInterface(GLuint program, const shader::ShaderCreateI
 {
   using namespace blender::gpu::shader;
 
+  shader_builtins_ = info.builtins_combined();
+
   attr_len_ = info.vertex_inputs_.size();
   uniform_len_ = info.push_constants_.size();
   constant_len_ = info.specialization_constants_.size();
