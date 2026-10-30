@@ -224,8 +224,40 @@ static void read_typed_property_sample(const ICompoundProperty &parent,
   }
 }
 
+static void warn_about_truncated_strings(const ICompoundProperty &parent,
+                                         const ISampleSelector &selector,
+                                         const std::string &name,
+                                         const std::string &object_path)
+{
+  const IStringArrayProperty array_prop(parent, name);
+  if (!array_prop) {
+    return;
+  }
+
+  const StringArraySamplePtr sample_ptr = array_prop.getValue(selector);
+  const size_t max_length = sizeof(MStringProperty::s);
+  size_t truncated_count = 0;
+  for (const size_t i : IndexRange(sample_ptr->size())) {
+    if ((*sample_ptr)[i].size() > max_length) {
+      truncated_count++;
+    }
+  }
+
+  if (truncated_count > 0) {
+    CLOG_WARN(&LOG,
+              "On object '%s', %zu strings of attribute '%s' were truncated to %zu bytes at time "
+              "%f",
+              object_path.c_str(),
+              truncated_count,
+              name.c_str(),
+              max_length,
+              selector.getRequestedTime());
+  }
+}
+
 static void read_point_arb_geom_params(const IPointsSchema &schema,
                                        const ISampleSelector &selector,
+                                       const std::string &object_path,
                                        bke::MutableAttributeAccessor &attribute_accessor)
 {
   const ICompoundProperty prop = schema.getArbGeomParams();
@@ -305,6 +337,7 @@ static void read_point_arb_geom_params(const IPointsSchema &schema,
     else if (data_type == DataType(kStringPOD, 1)) {
       read_typed_property_sample<IStringArrayProperty, MStringProperty>(
           prop, selector, name, attribute_accessor);
+      warn_about_truncated_strings(prop, selector, name, object_path);
     }
   }
 }
@@ -397,7 +430,7 @@ void AbcPointsReader::read_geometry(bke::GeometrySet &geometry_set,
         "radius", bke::AttrDomain::Point, bke::AttributeInitValue(0.01f));
   }
 
-  read_point_arb_geom_params(m_schema, sample_sel, attribute_accessor);
+  read_point_arb_geom_params(m_schema, sample_sel, m_iobject.getFullName(), attribute_accessor);
 
   if (!read_params.velocity_name.empty() && read_params.velocity_scale != 0.0f) {
     V3fArraySamplePtr velocities = get_velocity_prop(
