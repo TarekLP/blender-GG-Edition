@@ -451,7 +451,7 @@ const char *GPU_shader_get_name(gpu::Shader *shader)
 
 bool GPU_shader_is_point_shader(const gpu::Shader *shader)
 {
-  return shader->interface == nullptr || shader->interface->writes_point_size();
+  return shader->interface == nullptr || shader->interface->is_point_shader();
 }
 
 /** \} */

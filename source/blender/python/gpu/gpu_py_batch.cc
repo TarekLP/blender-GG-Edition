@@ -310,31 +310,29 @@ static const char *pygpu_shader_check_compatibility(gpu::Batch *batch)
 }
 
 /**
- * Warn and return true when the batch draws points with a shader that doesn't write
- * `gl_PointSize`.
- *
- * The draw is only skipped on backends that require the vertex stage to write `gl_PointSize`
- * (Vulkan and Metal). OpenGL has a global point size and keeps drawing the points, but the warning
- * is emitted on every backend as the calling code still needs to be adapted.
+ * Return true if the batch draws points with a shader that doesn't write `gl_PointSize`.
  */
-static bool pygpu_batch_check_point_shader(BPyGPUBatch *self)
+static bool pygpu_batch_point_shader_mismatch(BPyGPUBatch *self)
 {
   if (self->batch->prim_type != GPU_PRIM_POINTS || self->batch->shader == nullptr) {
     return false;
   }
-  if (GPU_shader_is_point_shader(self->batch->shader)) {
-    return false;
-  }
+  return !GPU_shader_is_point_shader(self->batch->shader);
+}
 
+/**
+ * Warn that a point batch uses a shader that doesn't write `gl_PointSize`.
+ *
+ * The warning is emitted on every backend, as the calling code still needs to be adapted.
+ */
+static void pygpu_batch_warn_missing_point_size()
+{
   PyErr_WarnEx(PyExc_UserWarning,
                "Drawing points requires a shader that writes `gl_PointSize`, otherwise the point "
                "size is undefined. The draw call is skipped on Vulkan and Metal. Set "
                "`gl_PointSize` in the vertex shader, or use a builtin point shader such as "
                "`POINT_FLAT_COLOR` or `POINT_UNIFORM_COLOR`.",
                1);
-
-  /* OpenGL has a global point size and can still draw the points. */
-  return !GPU_type_matches_ex(GPU_DEVICE_ANY, GPU_OS_ANY, GPU_DRIVER_ANY, GPU_BACKEND_OPENGL);
 }
 
 PyDoc_STRVAR(
@@ -450,8 +448,12 @@ static PyObject *pygpu_batch_draw(BPyGPUBatch *self, PyObject *args, PyObject *k
   }
 
   /* Points require a shader that writes `gl_PointSize`, otherwise the draw is undefined. */
-  if (pygpu_batch_check_point_shader(self)) {
-    Py_RETURN_NONE;
+  if (pygpu_batch_point_shader_mismatch(self)) {
+    pygpu_batch_warn_missing_point_size();
+    /* OpenGL has a global point size and can still draw the points. */
+    if (!GPU_type_matches_ex(GPU_DEVICE_ANY, GPU_OS_ANY, GPU_DRIVER_ANY, GPU_BACKEND_OPENGL)) {
+      Py_RETURN_NONE;
+    }
   }
 
   if (const char *error = pygpu_shader_check_compatibility(self->batch)) {
@@ -506,8 +508,13 @@ static PyObject *pygpu_batch_draw_instanced(BPyGPUBatch *self, PyObject *args, P
   }
 
   pygpu_batch_shader_set(self, py_program);
-  if (pygpu_batch_check_point_shader(self)) {
-    Py_RETURN_NONE;
+  /* Points require a shader that writes `gl_PointSize`, otherwise the draw is undefined. */
+  if (pygpu_batch_point_shader_mismatch(self)) {
+    pygpu_batch_warn_missing_point_size();
+    /* OpenGL has a global point size and can still draw the points. */
+    if (!GPU_type_matches_ex(GPU_DEVICE_ANY, GPU_OS_ANY, GPU_DRIVER_ANY, GPU_BACKEND_OPENGL)) {
+      Py_RETURN_NONE;
+    }
   }
   GPU_batch_draw_instance_range(self->batch, instance_start, instance_count);
   Py_RETURN_NONE;
@@ -556,8 +563,13 @@ static PyObject *pygpu_batch_draw_range(BPyGPUBatch *self, PyObject *args, PyObj
   }
 
   pygpu_batch_shader_set(self, py_program);
-  if (pygpu_batch_check_point_shader(self)) {
-    Py_RETURN_NONE;
+  /* Points require a shader that writes `gl_PointSize`, otherwise the draw is undefined. */
+  if (pygpu_batch_point_shader_mismatch(self)) {
+    pygpu_batch_warn_missing_point_size();
+    /* OpenGL has a global point size and can still draw the points. */
+    if (!GPU_type_matches_ex(GPU_DEVICE_ANY, GPU_OS_ANY, GPU_DRIVER_ANY, GPU_BACKEND_OPENGL)) {
+      Py_RETURN_NONE;
+    }
   }
   GPU_batch_draw_range(self->batch, elem_start, elem_count);
   Py_RETURN_NONE;

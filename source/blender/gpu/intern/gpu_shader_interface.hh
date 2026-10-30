@@ -100,14 +100,8 @@ class ShaderInterface {
   ShaderInterface();
   virtual ~ShaderInterface();
 
-  /**
-   * Return true if the shader writes `gl_PointSize`.
-   *
-   * Backends without a global point size (Vulkan and Metal) require the vertex stage to write
-   * `gl_PointSize` in order to draw points. OpenGL has a global point size, but still reports the
-   * shader state, so that callers can warn about shaders that are not portable.
-   */
-  bool writes_point_size() const
+  /** Return true if the shader is a point shader, i.e. it writes `gl_PointSize`. */
+  bool is_point_shader() const
   {
     return (shader_builtins_ & shader::BuiltinBits::POINT_SIZE) == shader::BuiltinBits::POINT_SIZE;
   }
