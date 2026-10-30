@@ -31,6 +31,13 @@ class AbstractAlembicTest(unittest.TestCase):
         # Make sure we always start with a known-empty file.
         bpy.ops.wm.open_mainfile(filepath=str(self.testdir / "empty.blend"))
 
+    def tearDown(self):
+        """Unload the current blend file to release any imported Alembic files.
+
+        This is necessary on Windows in order to be able to delete temporary ABC files.
+        """
+        bpy.ops.wm.read_homefile(use_empty=True, use_factory_startup=True)
+
     def assertAlmostEqualFloatArray(self, actual, expect, places=6, delta=None):
         """Asserts that the arrays of floats are almost equal."""
 
@@ -410,7 +417,7 @@ class PointAttributesImportExportTest(AbstractAlembicTest):
         self.assertEqual(self._export_import_attribute('STRING', values), values)
 
 
-class CameraExportImportTest(unittest.TestCase):
+class CameraExportImportTest(AbstractAlembicTest):
     names = [
         'CAM_Unit_Transform',
         'CAM_Look_+Y',
@@ -424,15 +431,10 @@ class CameraExportImportTest(unittest.TestCase):
     ]
 
     def setUp(self):
+        super().setUp()
         self._tempdir = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tempdir.cleanup)
         self.tempdir = pathlib.Path(self._tempdir.name)
-
-    def tearDown(self):
-        # Unload the current blend file to release the imported Alembic file.
-        # This is necessary on Windows in order to be able to delete the
-        # temporary ABC file.
-        bpy.ops.wm.read_homefile(use_empty=True, use_factory_startup=True)
-        self._tempdir.cleanup()
 
     def test_export_hierarchy(self):
         self.do_export_import_test(flatten=False)
