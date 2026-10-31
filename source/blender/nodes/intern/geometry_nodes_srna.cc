@@ -84,6 +84,30 @@ static const ModifierData *find_modifier_data_from_system_property(const Pointer
   return nullptr;
 }
 
+static std::string rna_NodesModifierSocket_modifier_name_get(PointerRNA *ptr,
+                                                             PropertyRNA * /*prop*/)
+{
+  if (const ModifierData *md = find_modifier_data_from_system_property(ptr)) {
+    return md->name;
+  }
+  return "";
+}
+
+/**
+ * The socket struct is shared by every modifier using the node group, so the name has to be read
+ * from the pointer.
+ */
+static void rna_def_nodes_modifier_socket_owner(StructRNA *srna)
+{
+  RNA_def_struct_ui_icon(srna, RNA_struct_ui_icon(RNA_NodesModifier));
+
+  PropertyRNA *prop = RNA_def_string(srna, "modifier_name", nullptr, 0, "Modifier", nullptr);
+  RNA_def_property_flag(prop, PROP_HIDDEN);
+  RNA_def_property_string_funcs_runtime(
+      prop, rna_NodesModifierSocket_modifier_name_get, nullptr, nullptr, nullptr, nullptr);
+  RNA_def_struct_name_property(srna, prop, true);
+}
+
 static std::optional<std::string> rna_NodesModifierPropertyInput_path(const PointerRNA *ptr)
 {
   StructRNA *srna = ptr->type;
@@ -111,6 +135,7 @@ static StructRNA *get_input_socket_struct_rna(const bNodeTree &tree,
   if (stype->make_geometry_nodes_input_srna) {
     stype->make_geometry_nodes_input_srna(tree, *srna, socket, r_generated);
   }
+  rna_def_nodes_modifier_socket_owner(srna);
 
   return srna;
 }
@@ -178,6 +203,7 @@ static StructRNA *create_outputs_srna(const bNodeTree &tree, GeneratedTreeSrnaDa
     RNA_def_property_flag(prop, PROP_FORCE_GEOMETRY_EVAL);
     RNA_def_property_update_runtime(prop, geometry_nodes_property_update);
     RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
+    rna_def_nodes_modifier_socket_owner(output_srna);
     prop = RNA_def_pointer_runtime(srna, identifier.c_str(), output_srna, name.c_str(), "");
     RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
   }
