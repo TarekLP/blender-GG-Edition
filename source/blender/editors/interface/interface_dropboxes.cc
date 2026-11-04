@@ -18,6 +18,7 @@
 
 #include "DNA_material_types.h"
 #include "DNA_space_types.h"
+#include "DNA_workspace_types.h"
 
 #include "MEM_guardedalloc.h"
 
@@ -158,6 +159,49 @@ static std::string drop_material_tooltip(bContext *C,
 
 /** \} */
 
+static std::string workspace_drop_tooltip(bContext *C,
+                                          wmDrag *drag,
+                                          const int xy[2],
+                                          wmDropBox * /*drop*/)
+{
+  rcti rect;
+  wmWindow *win = CTX_wm_window(C);
+  WorkSpace *drop_workspace = reinterpret_cast<WorkSpace *>(
+      ui::context_mouse_over_but_get_tab_ID(C, win->runtime->eventstate, rect));
+  ID *id = drag->ids.first()->id;
+
+  const bool after = (xy[0] > (rect.xmax + rect.xmin) * 0.5);
+  if (after) {
+    return fmt::format(
+        fmt::runtime(TIP_("Move {} after {}")), id->name + 2, drop_workspace->id.name + 2);
+  }
+  return fmt::format(
+      fmt::runtime(TIP_("Move {} before {}")), id->name + 2, drop_workspace->id.name + 2);
+}
+
+static bool workspace_drop_poll(bContext *C, wmDrag *drag, const wmEvent * /*event*/)
+{
+  if (drag->ids.is_empty()) {
+    return false;
+  }
+  ID *id = drag->ids.first()->id;
+  if (GS(id->name) != ID_WS) {
+    return false;
+  }
+
+  wmWindow *win = CTX_wm_window(C);
+  rcti rect;
+  WorkSpace *drop_workspace = reinterpret_cast<WorkSpace *>(
+      ui::context_mouse_over_but_get_tab_ID(C, win->runtime->eventstate, rect));
+
+  if (drop_workspace == nullptr) {
+    return false;
+  }
+
+  ScrArea *area = CTX_wm_area(C);
+  return area && area->spacetype == SPACE_TOPBAR;
+}
+
 /* -------------------------------------------------------------------- */
 /** \name Add User Interface Drop Boxes
  * \{ */
@@ -182,6 +226,9 @@ void dropboxes_ui()
                  drop_material_copy,
                  WM_drag_free_imported_drag_ID,
                  drop_material_tooltip);
+
+  WM_dropbox_add(
+      lb, "WORKSPACE_OT_drop", workspace_drop_poll, nullptr, nullptr, workspace_drop_tooltip);
 }
 
 /** \} */

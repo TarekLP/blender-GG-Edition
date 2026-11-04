@@ -850,7 +850,7 @@ def km_screen(params):
         ("render.view_cancel", {"type": 'ESC', "value": 'PRESS'}, None),
         ("render.view_show", {"type": 'F11', "value": 'PRESS'}, None),
         ("render.play_rendered_anim", {"type": 'F11', "value": 'PRESS', "ctrl": True}, None),
-        ("screen.workspace_dragdrop", {"type": 'LEFTMOUSE', "value": 'CLICK_DRAG'}, None),
+        ("workspace.drag", {"type": 'LEFTMOUSE', "value": 'CLICK_DRAG'}, None),
     ])
 
     if not params.legacy:

@@ -5308,7 +5308,7 @@ static int do_but_TAB(
 #ifdef USE_DRAG_TOGGLE
   if (is_property) {
     int retval;
-    if (do_but_ANY_drag_toggle(C, but, data, event, &retval)) {
+    if ((event->modifier == KM_SHIFT) && do_but_ANY_drag_toggle(C, but, data, event, &retval)) {
       return retval;
     }
   }

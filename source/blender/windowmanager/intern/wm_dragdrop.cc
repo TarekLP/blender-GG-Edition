@@ -614,6 +614,10 @@ static wmDropBox *wm_dropbox_active(bContext *C, wmDrag *drag, const wmEvent *ev
   wmWindow *win = CTX_wm_window(C);
   bScreen *screen = WM_window_get_active_screen(win);
   ScrArea *area = BKE_screen_find_area_xy(screen, SPACE_TYPE_ANY, event->xy);
+  if (!area) {
+    /* Temp fix for SPACE_TOPBAR, because they are not included in `screen->areabases` */
+    area = CTX_wm_area(C);
+  }
   wmDropBox *drop = nullptr;
 
   if (area) {
@@ -1172,6 +1176,10 @@ const std::string WM_drag_get_item_name(wmDrag *drag)
   switch (drag->type) {
     case WM_DRAG_ID: {
       ID *id = WM_drag_get_local_ID(drag, 0);
+      if (GS(id->name) == ID_WS) {
+        /* Temp fix to avoid drawing ID name. */
+        return "";
+      }
       const int dragged_ids = drag->ids.count();
 
       if (dragged_ids == 1) {
@@ -1298,6 +1306,7 @@ static void wm_drag_draw_tooltip(bContext *C, wmWindow *win, wmDrag *drag, const
   if (tooltip.is_empty() && !has_disabled_info) {
     return;
   }
+  ScrArea *area = CTX_wm_area(C);
 
   const int winsize_y = WM_window_native_pixel_y(win);
   int x, y;
@@ -1335,6 +1344,10 @@ static void wm_drag_draw_tooltip(bContext *C, wmWindow *win, wmDrag *drag, const
     else {
       y = xy[1] - (size / 2) - padding - iconsize - padding - iconsize;
     }
+  }
+  else if (area && (area->spacetype == SPACE_TOPBAR)) {
+    x = xy[0] + iconsize;
+    y = xy[1] - iconsize;
   }
   else {
     x = xy[0] - 2 * padding;
