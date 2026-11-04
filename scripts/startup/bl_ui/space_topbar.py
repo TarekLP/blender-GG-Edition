@@ -386,73 +386,6 @@ class TOPBAR_MT_templates_more(Menu):
         bpy.types.TOPBAR_MT_file_new.draw_ex(self.layout, context, use_more=True)
 
 
-class TOPBAR_MT_file_import(Menu):
-    bl_idname = "TOPBAR_MT_file_import"
-    bl_label = "Import"
-    bl_owner_use_filter = False
-
-    def draw(self, _context):
-        FileHandler = bpy.types.FileHandler
-        if bpy.app.build_options.alembic:
-            self.layout.operator(
-                "wm.alembic_import",
-                text=FileHandler.label_with_extensions("IO_FH_alembic"),
-                translate=False,
-            )
-        if bpy.app.build_options.usd:
-            self.layout.operator(
-                "wm.usd_import",
-                text=FileHandler.label_with_extensions("IO_FH_usd"),
-                translate=False,
-            )
-
-        if bpy.app.build_options.io_gpencil:
-            self.layout.operator(
-                "wm.grease_pencil_import_svg",
-                text=FileHandler.label_with_extensions("IO_FH_grease_pencil_svg"),
-                translate=False,
-            )
-
-        if bpy.app.build_options.io_wavefront_obj:
-            self.layout.operator(
-                "wm.obj_import",
-                text=FileHandler.label_with_extensions("IO_FH_obj"),
-                translate=False,
-            )
-        if bpy.app.build_options.io_ply:
-            self.layout.operator(
-                "wm.ply_import",
-                text=FileHandler.label_with_extensions("IO_FH_ply"),
-                translate=False,
-            )
-        if bpy.app.build_options.io_spz:
-            self.layout.operator(
-                "wm.spz_import",
-                text=FileHandler.label_with_extensions("IO_FH_spz"),
-                translate=False,
-            )
-        if bpy.app.build_options.io_stl:
-            self.layout.operator(
-                "wm.stl_import",
-                text=FileHandler.label_with_extensions("IO_FH_stl"),
-                translate=False,
-            )
-
-        if bpy.app.build_options.io_fbx:
-            self.layout.operator(
-                "wm.fbx_import",
-                text=FileHandler.label_with_extensions("IO_FH_fbx"),
-                translate=False,
-            )
-
-        if bpy.app.build_options.opentimelineio:
-            self.layout.operator(
-                "wm.otio_import",
-                text=FileHandler.label_with_extensions("IO_FH_otio"),
-                translate=False,
-            )
-
-
 class _MenuDrawProbeProps:
     """Operator properties returned by `UILayout.operator()` while probing."""
 
@@ -491,7 +424,7 @@ class _MenuDrawProbeMenu:
         return None
 
 
-def _file_export_operator_ids(func, context):
+def _file_menu_operator_ids(func, context):
     """Operator ID-names a draw-function registered with `append()` adds.
 
     Returns `None` when the draw-function can't be inspected, in which case it
@@ -503,6 +436,150 @@ def _file_export_operator_ids(func, context):
     except Exception:
         return None
     return probe.operator_ids
+
+
+def _draw_appended_entries(owner, menu_self, context, *, top_level):
+    """Draw the entries added to `owner` with `append()`, either the top level
+    ones or all the others.
+
+    `owner` is the menu class holding the entries, `menu_self` the menu instance
+    which is currently being drawn - either the owner itself or its "Other
+    Formats" sub-menu. Entries are classified by the operators they add, see
+    `owner.top_level_ops`.
+    """
+    layout = menu_self.layout
+    operator_context_default = layout.operator_context
+
+    for func in owner.draw._draw_funcs:
+        # Skip the draw function of the menu itself.
+        if func is owner.draw:
+            continue
+
+        operator_ids = _file_menu_operator_ids(func, context)
+        if operator_ids is None:
+            # Can't inspect the entry, keep it out of the top level menu.
+            is_top_level = False
+        else:
+            is_top_level = bool(operator_ids & owner.top_level_ops)
+        if is_top_level != top_level:
+            continue
+
+        # Same safeguard as the default menu drawing code, so a broken entry
+        # does not prevent the rest of the menu from drawing.
+        try:
+            func(menu_self, context)
+        except Exception:
+            import traceback
+
+            traceback.print_exc()
+
+        layout.operator_context = operator_context_default
+
+
+class TOPBAR_MT_file_import(Menu):
+    bl_idname = "TOPBAR_MT_file_import"
+    bl_label = "Import"
+    bl_owner_use_filter = False
+
+    # Operators which stay directly in this menu. Everything else, including the
+    # entries add-ons register with `TOPBAR_MT_file_import.append()`, is grouped
+    # in the "Other Formats" sub-menu below.
+    top_level_ops = frozenset({
+        "import_scene.gltf",
+        "wm.usd_import",
+    })
+
+    def draw(self, context):
+        FileHandler = bpy.types.FileHandler
+        layout = self.layout
+
+        # Formats kept directly in this menu.
+        if bpy.app.build_options.usd:
+            layout.operator(
+                "wm.usd_import",
+                text=FileHandler.label_with_extensions("IO_FH_usd"),
+                translate=False,
+            )
+        _draw_appended_entries(TOPBAR_MT_file_import, self, context, top_level=True)
+
+        layout.separator()
+        layout.menu("TOPBAR_MT_file_import_other")
+
+    # `_GenericUI._dyn_ui_initialize` normally wraps `draw` so that entries added
+    # with `append()` are drawn automatically. Setting `_draw_funcs` here keeps
+    # that wrapper from being created, so this menu can decide itself which of
+    # those entries it draws and which ones end up in the "Other Formats" menu.
+    # The first entry stays the draw function of this menu itself, matching the
+    # layout the wrapper would have created. Defined after `draw` as it refers to
+    # it.
+    draw._draw_funcs = [draw]
+
+
+class TOPBAR_MT_file_import_other(Menu):
+    bl_idname = "TOPBAR_MT_file_import_other"
+    bl_label = "Other Formats"
+    bl_owner_use_filter = False
+
+    def draw(self, context):
+        FileHandler = bpy.types.FileHandler
+        layout = self.layout
+
+        # Formats which are not shown directly in the Import menu.
+        if bpy.app.build_options.alembic:
+            layout.operator(
+                "wm.alembic_import",
+                text=FileHandler.label_with_extensions("IO_FH_alembic"),
+                translate=False,
+            )
+
+        if bpy.app.build_options.io_gpencil:
+            layout.operator(
+                "wm.grease_pencil_import_svg",
+                text=FileHandler.label_with_extensions("IO_FH_grease_pencil_svg"),
+                translate=False,
+            )
+
+        if bpy.app.build_options.io_wavefront_obj:
+            layout.operator(
+                "wm.obj_import",
+                text=FileHandler.label_with_extensions("IO_FH_obj"),
+                translate=False,
+            )
+        if bpy.app.build_options.io_ply:
+            layout.operator(
+                "wm.ply_import",
+                text=FileHandler.label_with_extensions("IO_FH_ply"),
+                translate=False,
+            )
+        if bpy.app.build_options.io_spz:
+            layout.operator(
+                "wm.spz_import",
+                text=FileHandler.label_with_extensions("IO_FH_spz"),
+                translate=False,
+            )
+        if bpy.app.build_options.io_stl:
+            layout.operator(
+                "wm.stl_import",
+                text=FileHandler.label_with_extensions("IO_FH_stl"),
+                translate=False,
+            )
+
+        if bpy.app.build_options.io_fbx:
+            layout.operator(
+                "wm.fbx_import",
+                text=FileHandler.label_with_extensions("IO_FH_fbx"),
+                translate=False,
+            )
+
+        if bpy.app.build_options.opentimelineio:
+            layout.operator(
+                "wm.otio_import",
+                text=FileHandler.label_with_extensions("IO_FH_otio"),
+                translate=False,
+            )
+
+        # Entries added by add-ons, such as SVG, BVH and FBX.
+        _draw_appended_entries(TOPBAR_MT_file_import, self, context, top_level=False)
 
 
 class TOPBAR_MT_file_export(Menu):
@@ -541,7 +618,7 @@ class TOPBAR_MT_file_export(Menu):
                 text=FileHandler.label_with_extensions("IO_FH_usd"),
                 translate=False,
             )
-        TOPBAR_MT_file_export._draw_appended_entries(self, context, top_level=True)
+        _draw_appended_entries(TOPBAR_MT_file_export, self, context, top_level=True)
 
         layout.separator()
         layout.menu("TOPBAR_MT_file_export_other")
@@ -549,37 +626,6 @@ class TOPBAR_MT_file_export(Menu):
     # Has to be defined after `draw`, as this is the list `_dyn_ui_initialize`
     # picks up instead of wrapping `draw`. See the comment above.
     draw._draw_funcs = [draw]
-
-    @classmethod
-    def _draw_appended_entries(cls, menu_self, context, *, top_level):
-        """Draw entries added with `append()`, either the top level ones or all others."""
-        layout = menu_self.layout
-        operator_context_default = layout.operator_context
-
-        for func in cls.draw._draw_funcs:
-            # Skip the draw function of this menu itself.
-            if func is cls.draw:
-                continue
-
-            operator_ids = _file_export_operator_ids(func, context)
-            if operator_ids is None:
-                # Can't inspect the entry, keep it out of the top level menu.
-                is_top_level = False
-            else:
-                is_top_level = bool(operator_ids & cls.top_level_ops)
-            if is_top_level != top_level:
-                continue
-
-            # Same safeguard as the default menu drawing code, so a broken entry
-            # does not prevent the rest of the menu from drawing.
-            try:
-                func(menu_self, context)
-            except Exception:
-                import traceback
-
-                traceback.print_exc()
-
-            layout.operator_context = operator_context_default
 
 
 class TOPBAR_MT_file_export_other(Menu):
@@ -633,7 +679,7 @@ class TOPBAR_MT_file_export_other(Menu):
             )
 
         # Entries added by add-ons, such as FBX and BVH.
-        TOPBAR_MT_file_export._draw_appended_entries(self, context, top_level=False)
+        _draw_appended_entries(TOPBAR_MT_file_export, self, context, top_level=False)
 
 
 class TOPBAR_MT_file_external_data(Menu):
@@ -1091,6 +1137,7 @@ classes = (
     TOPBAR_MT_file_project,
     TOPBAR_MT_templates_more,
     TOPBAR_MT_file_import,
+    TOPBAR_MT_file_import_other,
     TOPBAR_MT_file_export,
     TOPBAR_MT_file_export_other,
     TOPBAR_MT_file_external_data,
