@@ -568,6 +568,13 @@ static void wm_window_title_project_append(fmt::memory_buffer &win_title)
   }
 }
 
+/** Append the application name (with the build branding and version) to `win_title`. */
+static void wm_window_title_app_name_append(fmt::memory_buffer &win_title)
+{
+  win_title.append(StringRef("Blender - Gordon Greedman Version - "));
+  win_title.append(StringRef(BKE_blender_version_string()));
+}
+
 /**
  * Construct the title text for `win`.
  * The window may *not* have been created, any calls depending on `win->runtime->ghostwin` are
@@ -597,7 +604,7 @@ static void wm_window_title_text(wmWindowManager *wm,
       }
     }
     else {
-      win_title.append(StringRef("Blender"));
+      wm_window_title_app_name_append(win_title);
     }
     return;
   }
@@ -690,8 +697,8 @@ static void wm_window_title_text(wmWindowManager *wm,
   /* If a project is active, display its name. */
   wm_window_title_project_append(win_title);
 
-  win_title.append(StringRef(" — Blender "));
-  win_title.append(StringRef(BKE_blender_version_string()));
+  win_title.append(StringRef(" — "));
+  wm_window_title_app_name_append(win_title);
 }
 
 static void wm_window_title_state_refresh(wmWindowManager *wm, wmWindow *win)
