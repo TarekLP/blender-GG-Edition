@@ -453,65 +453,187 @@ class TOPBAR_MT_file_import(Menu):
             )
 
 
+class _MenuDrawProbeProps:
+    """Operator properties returned by `UILayout.operator()` while probing."""
+
+    def __setattr__(self, _name, _value):
+        # Menu entries set properties on the operator they add, which are of no
+        # interest when only collecting operator ID-names.
+        pass
+
+    def __getattr__(self, _name):
+        return None
+
+
+class _MenuDrawProbeLayout:
+    """`UILayout` stand-in which records the operators a menu entry adds."""
+
+    def __init__(self):
+        self.operator_ids = set()
+
+    def operator(self, operator_idname, **_kwargs):
+        self.operator_ids.add(operator_idname)
+        return _MenuDrawProbeProps()
+
+    def __getattr__(self, _name):
+        # Everything else (separator(), label(), row(), column(), box(), menu(),
+        # ...) returns another probe so draw-functions can chain calls as usual.
+        return lambda *_args, **_kwargs: self
+
+
+class _MenuDrawProbeMenu:
+    """Menu instance stand-in which is passed to a draw-function while probing."""
+
+    def __init__(self, layout):
+        self.layout = layout
+
+    def __getattr__(self, _name):
+        return None
+
+
+def _file_export_operator_ids(func, context):
+    """Operator ID-names a draw-function registered with `append()` adds.
+
+    Returns `None` when the draw-function can't be inspected, in which case it
+    is treated as not belonging to the top level menu.
+    """
+    probe = _MenuDrawProbeLayout()
+    try:
+        func(_MenuDrawProbeMenu(probe), context)
+    except Exception:
+        return None
+    return probe.operator_ids
+
+
 class TOPBAR_MT_file_export(Menu):
     bl_idname = "TOPBAR_MT_file_export"
     bl_label = "Export"
     bl_owner_use_filter = False
 
+    # Operators which stay directly in this menu. Everything else, including the
+    # entries add-ons register with `TOPBAR_MT_file_export.append()`, is grouped
+    # in the "Other Formats" sub-menu below.
+    top_level_ops = frozenset({
+        "export_scene.gltf",
+        "wm.usd_export",
+    })
+
+    # `_GenericUI._dyn_ui_initialize` normally wraps `draw` so that entries added
+    # with `append()` are drawn automatically. Setting `_draw_funcs` here keeps
+    # that wrapper from being created, so this menu can decide itself which of
+    # those entries it draws and which ones end up in the "Other Formats" menu.
+    # The first entry stays the draw function of this menu itself, matching the
+    # layout the wrapper would have created.
     def draw(self, context):
         FileHandler = bpy.types.FileHandler
+        layout = self.layout
 
-        row = self.layout.row()
+        row = layout.row()
         row.operator("wm.collection_export_all")
         row.enabled = context.view_layer.has_export_collections
 
-        self.layout.separator()
+        layout.separator()
 
-        if bpy.app.build_options.alembic:
-            self.layout.operator(
-                "wm.alembic_export",
-                text=FileHandler.label_with_extensions("IO_FH_alembic"),
-                translate=False,
-            )
+        # Formats kept directly in this menu.
         if bpy.app.build_options.usd:
-            self.layout.operator(
+            layout.operator(
                 "wm.usd_export",
                 text=FileHandler.label_with_extensions("IO_FH_usd"),
+                translate=False,
+            )
+        TOPBAR_MT_file_export._draw_appended_entries(self, context, top_level=True)
+
+        layout.separator()
+        layout.menu("TOPBAR_MT_file_export_other")
+
+    # Has to be defined after `draw`, as this is the list `_dyn_ui_initialize`
+    # picks up instead of wrapping `draw`. See the comment above.
+    draw._draw_funcs = [draw]
+
+    @classmethod
+    def _draw_appended_entries(cls, menu_self, context, *, top_level):
+        """Draw entries added with `append()`, either the top level ones or all others."""
+        layout = menu_self.layout
+        operator_context_default = layout.operator_context
+
+        for func in cls.draw._draw_funcs:
+            # Skip the draw function of this menu itself.
+            if func is cls.draw:
+                continue
+
+            operator_ids = _file_export_operator_ids(func, context)
+            if operator_ids is None:
+                # Can't inspect the entry, keep it out of the top level menu.
+                is_top_level = False
+            else:
+                is_top_level = bool(operator_ids & cls.top_level_ops)
+            if is_top_level != top_level:
+                continue
+
+            # Same safeguard as the default menu drawing code, so a broken entry
+            # does not prevent the rest of the menu from drawing.
+            try:
+                func(menu_self, context)
+            except Exception:
+                import traceback
+
+                traceback.print_exc()
+
+            layout.operator_context = operator_context_default
+
+
+class TOPBAR_MT_file_export_other(Menu):
+    bl_idname = "TOPBAR_MT_file_export_other"
+    bl_label = "Other Formats"
+    bl_owner_use_filter = False
+
+    def draw(self, context):
+        FileHandler = bpy.types.FileHandler
+        layout = self.layout
+
+        # Formats which are not shown directly in the Export menu.
+        if bpy.app.build_options.alembic:
+            layout.operator(
+                "wm.alembic_export",
+                text=FileHandler.label_with_extensions("IO_FH_alembic"),
                 translate=False,
             )
 
         if bpy.app.build_options.io_gpencil:
             # PUGIXML library dependency.
             if bpy.app.build_options.pugixml:
-                self.layout.operator("wm.grease_pencil_export_svg", text="Grease Pencil as SVG")
+                layout.operator("wm.grease_pencil_export_svg", text="Grease Pencil as SVG")
             # HARU library dependency.
             if bpy.app.build_options.haru:
-                self.layout.operator("wm.grease_pencil_export_pdf", text="Grease Pencil as PDF")
+                layout.operator("wm.grease_pencil_export_pdf", text="Grease Pencil as PDF")
 
         if bpy.app.build_options.io_wavefront_obj:
-            self.layout.operator(
+            layout.operator(
                 "wm.obj_export",
                 text=FileHandler.label_with_extensions("IO_FH_obj"),
                 translate=False,
             )
         if bpy.app.build_options.io_ply:
-            self.layout.operator(
+            layout.operator(
                 "wm.ply_export",
                 text=FileHandler.label_with_extensions("IO_FH_ply"),
                 translate=False,
             )
         if bpy.app.build_options.io_stl:
-            self.layout.operator(
+            layout.operator(
                 "wm.stl_export",
                 text=FileHandler.label_with_extensions("IO_FH_stl"),
                 translate=False,
             )
         if bpy.app.build_options.opentimelineio:
-            self.layout.operator(
+            layout.operator(
                 "wm.otio_export",
                 text=FileHandler.label_with_extensions("IO_FH_otio"),
                 translate=False,
             )
+
+        # Entries added by add-ons, such as FBX and BVH.
+        TOPBAR_MT_file_export._draw_appended_entries(self, context, top_level=False)
 
 
 class TOPBAR_MT_file_external_data(Menu):
@@ -970,6 +1092,7 @@ classes = (
     TOPBAR_MT_templates_more,
     TOPBAR_MT_file_import,
     TOPBAR_MT_file_export,
+    TOPBAR_MT_file_export_other,
     TOPBAR_MT_file_external_data,
     TOPBAR_MT_file_cleanup,
     TOPBAR_MT_file_previews,
