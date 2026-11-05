@@ -338,10 +338,10 @@ class SKETCH_PT_sketch(bpy.types.Panel):
     def draw(self, context):
         layout = self.layout
         col = layout.column(align=True)
-        col.operator("sketch.stroke", icon='GREASEPENCIL')
+        col.operator("sketch.stroke")
 
         layout.separator()
-        layout.operator("sketch.blockout", icon='MESH_DATA')
+        layout.operator("sketch.blockout")
 
 
 _classes = (
