@@ -2,7 +2,9 @@
 """Sketch to blockout: freehand sketching in the 3D view.
 
 Phase 1 (`bpy.ops.sketch.stroke`): modal freehand stroke with live preview,
-confirming creates a poly curve object.
+confirming creates a poly curve object. Draw by holding LMB in the 3D view,
+release to confirm, Esc/RMB to cancel.
+
 Phase 2 (`bpy.ops.sketch.blockout`): sweeps a rectangular cross-section along
 the stroke to produce a blockout mesh.
 
@@ -121,6 +123,35 @@ def curve_points_to_3d(obj, depsgraph=None):
     return []
 
 
+def _resolve_view3d(context):
+    """Find a VIEW_3D window region + 3D view, regardless of invoke context.
+
+    Panel buttons set `context.region` to the sidebar UI region, whose
+    `region_data` is None. The operator always needs the actual 3D window
+    region to project mouse coordinates, so resolve it explicitly.
+    """
+    screen = getattr(context, "screen", None)
+    if screen is None:
+        return None, None, None
+
+    area = context.area
+    if area is None or area.type != 'VIEW_3D':
+        area = next((a for a in screen.areas if a.type == 'VIEW_3D'), None)
+    if area is None:
+        return None, None, None
+
+    region = next((r for r in area.regions if r.type == 'WINDOW'), None)
+    if region is None:
+        return None, None, None
+
+    try:
+        with context.temp_override(area=area, region=region):
+            rv3d = context.region_data
+    except Exception:
+        rv3d = None
+    return area, region, rv3d
+
+
 # ---------------------------------------------------------------------------
 # Phase 1: modal sketch stroke with live preview.
 # ---------------------------------------------------------------------------
@@ -128,26 +159,23 @@ def curve_points_to_3d(obj, depsgraph=None):
 # Active stroke state, shared with the draw handler (which takes no arguments).
 _active_stroke = None
 _draw_handle = None
+# Instrumentation hook for test harnesses; holds the running operator.
+_active_op = None
 
 
 def _draw_callback():
-    """Draw the stroke being sketched, in world space, every viewport redraw."""
-    global _active_stroke
-    if _active_stroke is None:
-        return
+    """Draw the stroke being sketched, in world space, every viewport redraw.
 
-    context = bpy.context
-    region = context.region
-    rv3d = context.region_data
-    if region is None or rv3d is None:
-        return
-
-    points = _active_stroke.points_3d(context)
-    if len(points) < 2:
+    Reads only the stored 3D points, so it never touches (possibly closed)
+    areas or regions and cannot raise while a stroke is active.
+    """
+    stroke = _active_stroke
+    if stroke is None or len(stroke.points_3d) < 2:
         return
 
     shader = gpu.shader.from_builtin('UNIFORM_COLOR')
-    batch = batch_for_shader(shader, 'LINES', {"position": [tuple(p) for p in points]})
+    # The batch content key must match the shader attribute name ('pos').
+    batch = batch_for_shader(shader, 'LINE_STRIP', {"pos": [tuple(p) for p in stroke.points_3d]})
 
     gpu.state.depth_test_set('NONE')
     gpu.state.line_width_set(3.0)
@@ -159,39 +187,43 @@ def _draw_callback():
 
 
 class SketchStroke:
-    """Accumulated stroke: 2D region coordinates while drawing."""
+    """A stroke being drawn: region coords while drawing, 3D points once projected."""
 
-    def __init__(self, min_distance=3):
+    def __init__(self, region, rv3d, min_distance=3):
+        self.region = region
+        self.rv3d = rv3d
         self.coords_2d = []
+        self.points_3d = []
+        # Plane anchor: first projected point; later points stay on its view plane.
+        self.depth_anchor = None
         self.min_distance = min_distance
         self.last_coord = None
+        self.pressed = False
 
-    def add(self, coord):
+    def add(self, coord, depth_location):
+        """Append a region coordinate, projecting it to 3D once. Returns True if added."""
         if self.last_coord is not None:
             dx = coord[0] - self.last_coord[0]
             dy = coord[1] - self.last_coord[1]
             if (dx * dx + dy * dy) < self.min_distance * self.min_distance:
                 return False
+        if self.depth_anchor is None:
+            point = region_2d_to_location_3d(self.region, self.rv3d, coord, depth_location)
+            if point is None:
+                return False
+            self.depth_anchor = point.copy()
+        else:
+            point = region_2d_to_location_3d(self.region, self.rv3d, coord, self.depth_anchor)
+            if point is None:
+                return False
         self.coords_2d.append(coord)
+        self.points_3d.append(point)
         self.last_coord = coord
         return True
 
-    def points_3d(self, context):
-        region = context.region
-        rv3d = context.region_data
-        if region is None or rv3d is None:
-            return []
-        depth = context.scene.cursor.location
-        points = []
-        for coord in self.coords_2d:
-            point = region_2d_to_location_3d(region, rv3d, coord, depth)
-            if point is not None:
-                points.append(point)
-        return points
-
 
 class SKETCH_OT_stroke(bpy.types.Operator):
-    """Sketch a freehand stroke in the 3D view, confirm with a click"""
+    """Sketch a freehand stroke: hold LMB in the 3D view, release to confirm"""
 
     bl_idname = "sketch.stroke"
     bl_label = "Sketch Stroke"
@@ -210,42 +242,106 @@ class SKETCH_OT_stroke(bpy.types.Operator):
         return context.area is not None and context.area.type == 'VIEW_3D'
 
     def invoke(self, context, event):
-        global _active_stroke, _draw_handle
+        global _active_stroke, _draw_handle, _active_op
 
-        if context.region is None or context.region_data is None:
-            self.report({'WARNING'}, "No 3D view region to sketch in")
+        area, region, rv3d = _resolve_view3d(context)
+        if region is None or rv3d is None:
+            self.report({'WARNING'}, "No 3D view to sketch in")
             return {'CANCELLED'}
 
-        _active_stroke = SketchStroke(min_distance=self.min_distance)
-        _active_stroke.add((event.mouse_region_x, event.mouse_region_y))
+        # Never leak a draw handler from an earlier run.
+        if _draw_handle is not None:
+            try:
+                bpy.types.SpaceView3D.draw_handler_remove(_draw_handle, 'WINDOW')
+            except Exception:
+                pass
+            _draw_handle = None
 
+        _active_stroke = SketchStroke(region, rv3d, min_distance=self.min_distance)
+        _active_op = self
         _draw_handle = bpy.types.SpaceView3D.draw_handler_add(
             _draw_callback, (), 'WINDOW', 'POST_VIEW')
-        context.area.tag_redraw()
         context.window_manager.modal_handler_add(self)
+        self._tag_redraw(context)
         return {'RUNNING_MODAL'}
+
+    @staticmethod
+    def _tag_redraw(context):
+        area = getattr(context, "area", None)
+        if area is not None:
+            try:
+                area.tag_redraw()
+            except (ReferenceError, AttributeError):
+                pass
+
+    def _coord(self, event):
+        """Window event coordinates converted to the stored 3D region's space.
+
+        `event.mouse_region_*` is relative to the *invoke* region (the sidebar
+        when started from the panel), so compute against the stored region
+        ourselves. Returns None when the cursor is outside the 3D region.
+        """
+        region = _active_stroke.region
+        rx = event.mouse_x - region.x
+        ry = event.mouse_y - region.y
+        if 0 <= rx < region.width and 0 <= ry < region.height:
+            return (rx, ry)
+        return None
 
     def modal(self, context, event):
-        global _active_stroke
+        global _active_stroke, _active_op
 
-        if event.type == 'LEFTMOUSE' and event.value == 'RELEASE':
-            return self.finish(context, confirm=True)
-        if event.type in {'ESC', 'RIGHTMOUSE'}:
+        stroke = _active_stroke
+        if stroke is None:
             return self.finish(context, confirm=False)
-        if event.type == 'MOUSEMOVE' and _active_stroke is not None:
-            _active_stroke.add((event.mouse_region_x, event.mouse_region_y))
-            context.area.tag_redraw()
-        return {'RUNNING_MODAL'}
+
+        try:
+            if event.type == 'ESC':
+                return self.finish(context, confirm=False)
+            if event.type == 'RIGHTMOUSE' and event.value == 'PRESS':
+                return self.finish(context, confirm=False)
+
+            if event.type == 'LEFTMOUSE':
+                if event.value == 'PRESS':
+                    if not stroke.pressed:
+                        coord = self._coord(event)
+                        if coord is not None:
+                            stroke.pressed = True
+                            stroke.add(coord, context.scene.cursor.location)
+                            self._tag_redraw(context)
+                    return {'RUNNING_MODAL'}
+                if event.value == 'RELEASE':
+                    if not stroke.pressed:
+                        # Stray release (e.g. the click that opened the panel
+                        # button) - the stroke has not started yet.
+                        return {'RUNNING_MODAL'}
+                    return self.finish(context, confirm=True)
+                return {'RUNNING_MODAL'}
+
+            if event.type == 'MOUSEMOVE' and stroke.pressed:
+                coord = self._coord(event)
+                if coord is not None:
+                    if stroke.add(coord, context.scene.cursor.location):
+                        self._tag_redraw(context)
+            return {'RUNNING_MODAL'}
+        except ReferenceError:
+            # The area or region closed while sketching.
+            return self.finish(context, confirm=False)
 
     def finish(self, context, confirm):
-        global _active_stroke, _draw_handle
+        global _active_stroke, _draw_handle, _active_op
 
-        points = _active_stroke.points_3d(context) if _active_stroke else []
+        stroke = _active_stroke
+        points = list(stroke.points_3d) if stroke is not None else []
         if _draw_handle is not None:
-            bpy.types.SpaceView3D.draw_handler_remove(_draw_handle, 'WINDOW')
+            try:
+                bpy.types.SpaceView3D.draw_handler_remove(_draw_handle, 'WINDOW')
+            except Exception:
+                pass
             _draw_handle = None
         _active_stroke = None
-        context.area.tag_redraw()
+        _active_op = None
+        self._tag_redraw(context)
 
         if not confirm:
             return {'CANCELLED'}
@@ -296,8 +392,10 @@ class SKETCH_OT_blockout(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
+        # Only sketch strokes (curves): a random mesh such as a Cube would
+        # produce garbage geometry from its vertices.
         obj = context.active_object
-        return obj is not None and isinstance(obj.data, (bpy.types.Curve, bpy.types.Mesh))
+        return obj is not None and isinstance(obj.data, bpy.types.Curve)
 
     def execute(self, context):
         obj = context.active_object
